@@ -371,10 +371,12 @@ export default {
           icon: 'warning',
         }).then(() => {
           for (let k in fileTypeMap) {
-            const i = fileTypeMap[k].curFile?.indexOf(file.id)
-            if (i !== -1) {
-              fileTypeMap[k].curFile.splice(i, 1)
-              resolve(true)
+            if (fileTypeMap[k].curFile) {
+              const i = fileTypeMap[k].curFile.indexOf(file.id)
+              if (i !== -1) {
+                fileTypeMap[k].curFile.splice(i, 1)
+                resolve(true)
+              }
             }
           }
           resolve(true)
