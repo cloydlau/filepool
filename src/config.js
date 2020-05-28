@@ -33,7 +33,7 @@ export const init = (opts = {}) => {
       ...opts.fileTypeMap?.video
     },
     audio: {
-      format: ['mp3', 'wav'],
+      format: ['mp3'],
       maxSize: 60,
       ...opts.fileTypeMap?.audio
     },
