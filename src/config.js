@@ -1,6 +1,3 @@
-import axios from 'axios'
-const CancelToken = axios.CancelToken
-
 let request, url, globalParam, localProxy, proxy, fileTypeMap, chunkSize, cancel, chunk, globalMaxSize, globalCount
 
 let errTime = 0
@@ -70,6 +67,8 @@ export function api (data) {
     formData.append(k, data[k])
   }
   if (chunk) {
+    const CancelToken = require('axios').default.CancelToken
+
     errTime = 0
     let chunks = [], count = 0
     chunkFile(data.file, chunks)

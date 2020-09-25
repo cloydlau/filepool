@@ -22,44 +22,41 @@
                      :percentage="percentage"
                      style="margin-top:5px;display:inline-block;width:calc(100% - 30px)"
                      :color="[
-                    {color: '#f56c6c', percentage: 20},
-                    {color: '#e6a23c', percentage: 40},
-                    {color: '#6f7ad3', percentage: 60},
-                    {color: '#1989fa', percentage: 80},
-                    {color: '#5cb87a', percentage: 100}]"
+                       {color: '#f56c6c', percentage: 20},
+                       {color: '#e6a23c', percentage: 40},
+                       {color: '#6f7ad3', percentage: 60},
+                       {color: '#1989fa', percentage: 80},
+                       {color: '#5cb87a', percentage: 100}
+                     ]"
         />
         <el-tooltip content="取消上传">
           <el-button circle type="info" icon="el-icon-close" size="mini" plain @click="abort"/>
         </el-tooltip>
       </div>
-      <file-pond
-              v-show="percentage===100"
-              ref="filePond"
-              :label-idle="'点击上传'+(format?'（支持格式：'+format.join(', ')+'）':'')"
-              labelFileWaitingForSize="获取文件大小中..."
-              labelFileLoadError="加载失败"
-              labelFileLoading="加载中..."
-              labelTapToCancel="点击取消"
-              labelTapToRetry="点击重试"
-              labelFileProcessingComplete="上传成功"
-              labelTapToUndo="点击删除"
-              allow-multiple="true"
-              :server="server"
-              :files="files"
-              :max-files="Count||null"
-              @init="handleFilePondInit"
-              :beforeAddFile="beforeAddFile"
-              @activatefile="file=>{view(file.source)}"
-              :disabled="disabled"
-              @updatefiles="onUpdateFiles"
-              :beforeRemoveFile="beforeRemoveFile"
-              :allowDrop="false"
-              :onwarning="onWarning"
+      <file-pond v-show="percentage===100"
+                 ref="filePond"
+                 :label-idle="'点击上传'+(format?'（支持格式：'+format.join(', ')+'）':'')"
+                 labelFileWaitingForSize="获取文件大小中..."
+                 labelFileLoadError="加载失败"
+                 labelFileLoading="加载中..."
+                 labelTapToCancel="点击取消"
+                 labelTapToRetry="点击重试"
+                 labelFileProcessingComplete="上传成功"
+                 labelTapToUndo="点击删除"
+                 allow-multiple="true"
+                 :server="server"
+                 :files="files"
+                 :max-files="Count||null"
+                 @init="handleFilePondInit"
+                 :beforeAddFile="beforeAddFile"
+                 @activatefile="onActivateFile"
+                 :disabled="disabled"
+                 @updatefiles="onUpdateFiles"
+                 :beforeRemoveFile="beforeRemoveFile"
+                 :allowDrop="false"
+                 :onwarning="onWarning"
       />
     </template>
-
-    <!--<VideoPlyr v-if="fileType==='video'" :show.sync="preview.show" :src="preview.src"/>
-    <VueSoundPlayer v-else-if="fileType==='audio'" :show.sync="preview.show" :src="preview.src"/>-->
   </div>
 </template>
 
@@ -73,12 +70,11 @@ import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
 import FilePondPluginMediaPreview from 'filepond-plugin-media-preview'
 
 //import FilepondPluginDragReorder from 'filepond-plugin-drag-reorder'
-//import FilePondPluginImageOverlay from 'filepond-plugin-image-overlay'
+
 vueFilePond(
   FilePondPluginMediaPreview,
   FilePondPluginImagePreview,
   //FilepondPluginDragReorder,
-  //FilePondPluginImageOverlay
 )
 import {
   api,
@@ -93,14 +89,14 @@ import {
   globalMaxSize,
   globalCount
 } from './config'
-import { warn, confirmation, isEmpty } from 'plain-kit'
+import { warn, confirmation, isEmpty, typeOf } from 'plain-kit'
 import { getOrigin, headersToString, isArrayJSON } from './utils'
 
 export default {
   name: 'Filepool',
   props: {
     value: {
-      validator: value => ['String', 'Null', 'Array'].includes(({}).toString.call(value).slice(8, -1)),
+      validator: value => ['String', 'Null', 'Array'].includes(typeOf(value)),
     },
     param: {
       type: Object,
@@ -293,6 +289,9 @@ export default {
     })
   },
   methods: {
+    onActivateFile (file) {
+      this.view(file.source)
+    },
     abort,
     getMaxSize (format) {
       if (this.maxSize) {

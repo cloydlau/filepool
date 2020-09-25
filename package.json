@@ -21,31 +21,30 @@
   "scripts": {
     "dev": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lib": "vue-cli-service build --target lib --name filepool src/main.js",
-    "pub": "npm run lib && yrm use npm && npm publish && yrm use taobao"
+    "lib": "vue-cli-service build --target lib --name filepool src/main.js"
   },
   "dependencies": {
     "core-js": "^3.6.0",
-    "filepond": "^4.13.7",
+    "filepond": "^4.19.2",
     "filepond-plugin-file-validate-type": "^1.2.5",
+    "filepond-plugin-image-overlay": "^1.0.6",
     "filepond-plugin-image-preview": "^4.6.4",
     "filepond-plugin-media-preview": "^1.0.5",
+    "plain-kit": "^0.3.0-alpha.0",
     "vue-filepond": "^6.0.2"
   },
   "peerDependencies": {
     "axios": "^0.19.2",
     "element-ui": "^2.13.2",
-    "plain-kit": "^0.2.3",
     "vue": "^2.6.11"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "^4.3.0",
-    "@vue/cli-service": "^4.3.0",
+    "@vue/cli-plugin-babel": "^4.5.0",
+    "@vue/cli-service": "^4.5.0",
     "axios": "^0.19.2",
     "element-ui": "^2.13.2",
-    "plain-kit": "^0.2.3",
     "sass": "^1.26.0",
-    "sass-loader": "^8.0.2",
+    "sass-loader": "^9.0.0",
     "vue": "^2.6.11",
     "vue-template-compiler": "^2.6.11"
   }

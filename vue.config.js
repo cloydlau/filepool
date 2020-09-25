@@ -3,7 +3,6 @@ const path = require('path')
 const externals = process.env.NODE_ENV === 'development' ? {} : {
   'element-ui': 'element-ui',
   'axios': 'axios',
-  'plain-kit': 'plain-kit',
   'vue': 'vue',
 }
 
