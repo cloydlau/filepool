@@ -1,4 +1,5 @@
-let request, url, globalParam, localProxy, proxy, fileTypeMap, chunkSize, cancel, chunk, globalMaxSize, globalCount
+let request, requestConfig, url, globalParam, localProxy, proxy, fileTypeMap, chunkSize, cancel, chunk, globalMaxSize,
+  globalCount, base64Encoding, headForSize, delConfirmation
 
 let errTime = 0
 
@@ -11,7 +12,11 @@ export const MB = Math.pow(1024, 2)
 
 export const init = (opts = {}) => {
   request = opts.request
+  requestConfig = opts.requestConfig
   chunk = typeof opts.chunk === 'boolean' ? opts.chunk : true
+  base64Encoding = opts.base64Encoding
+  headForSize = opts.headForSize
+  delConfirmation = opts.delConfirmation
   chunkSize = (opts.chunkSize || 10) * MB
   url = opts.url || ''
   globalParam = opts.param || {}
@@ -97,7 +102,8 @@ export function api (data) {
           cancelToken: new CancelToken(function executor (c) {
             // executor 函数接收一个 cancel 函数作为参数
             cancel = c
-          })
+          }),
+          ...typeof requestConfig === 'function' ? requestConfig(data) : requestConfig
         }).then(res => {
           let data = 'data' in res ? res.data : res
           console.log(data)
@@ -135,6 +141,7 @@ export function api (data) {
             percentage.value = Math.round(progressEvent.loaded / data.file.size * 100)
           }
         },
+        ...typeof requestConfig === 'function' ? requestConfig(data) : requestConfig
       }).then(res => {
         percentage.value = 100
         return typeof res === 'string' ? res : res.data
@@ -172,4 +179,16 @@ function abort () {
   //todo: 调接口清除分片文件
 }
 
-export { request, percentage, localProxy, proxy, fileTypeMap, abort, globalMaxSize, globalCount }
+export {
+  request,
+  percentage,
+  localProxy,
+  proxy,
+  fileTypeMap,
+  abort,
+  globalMaxSize,
+  globalCount,
+  base64Encoding,
+  headForSize,
+  delConfirmation
+}

@@ -87,7 +87,10 @@ import {
   proxy,
   abort,
   globalMaxSize,
-  globalCount
+  globalCount,
+  base64Encoding,
+  headForSize,
+  delConfirmation
 } from './config'
 import { warn, confirmation, isEmpty, typeOf } from 'plain-kit'
 import { getOrigin, headersToString, isArrayJSON } from './utils'
@@ -151,6 +154,7 @@ export default {
         return true
       }
     },
+    base64Encoding: {}
   },
   computed: {
     format () {
@@ -186,6 +190,13 @@ export default {
       const left = window.screen.availWidth / 4
       return `height=${height},innerHeight=${height},width=${width},innerWidth=${width},top=${top},left=${left},toolbar=no,menubar=no,scrollbars=auto,resizeable=no,location=no,status=no`
     },
+    Base64Encoding () {
+      return typeof this.base64Encoding === 'boolean' ?
+        this.base64Encoding :
+        typeof base64Encoding === 'boolean' ?
+          base64Encoding :
+          true
+    },
   },
   data () {
     return {
@@ -198,7 +209,7 @@ export default {
       percentage: percentage.value,
       server: {
         load: (source, load, error, progress, abort, headers) => {
-          if (typeof request === 'function') {
+          if (headForSize && typeof request === 'function') {
             if (!isEmpty(proxy) || !isEmpty(localProxy)) {
               let origin = ''
               try {
@@ -364,7 +375,7 @@ export default {
       target[property] = temp
     },
     beforeRemoveFile (file) {
-      return new Promise((resolve, reject) => {
+      return delConfirmation ? new Promise((resolve, reject) => {
         confirmation({
           title: '删除文件',
           icon: 'warning',
@@ -382,7 +393,7 @@ export default {
         }).catch(() => {
           resolve(false)
         })
-      })
+      }) : true
     },
     upload (param, curFileType) {
       fn.call(this, param.file)
@@ -394,10 +405,14 @@ export default {
             this.addFile(fileUrl, 'local', curFileType)
           })
         } else {
-          let reader = new FileReader()
-          reader.readAsDataURL(file)
-          reader.onload = (e) => {
-            this.addFile(e.target.result, 'limbo', curFileType)
+          if (this.Base64Encoding) {
+            let reader = new FileReader()
+            reader.readAsDataURL(file)
+            reader.onload = (e) => {
+              this.addFile(e.target.result, 'limbo', curFileType)
+            }
+          } else {
+            this.addFile(file, 'local', curFileType)
           }
         }
       }
@@ -411,9 +426,11 @@ export default {
       })
     },
     onUpdateFiles (files) {
-      if (files && files[0] && files[0].source instanceof File) {
+      console.log('onUpdateFiles')
+      return
+      /*if (files && files[0] && files[0].source instanceof File) {
         return
-      }
+      }*/
 
       const getValueLen = () => {
         if (this.value) {
@@ -449,6 +466,10 @@ export default {
     handleFilePondInit () {
     },
     beforeAddFile (item) {
+      console.log('beforeAddFile')
+      return true
+
+
       if (item.file instanceof File) {
         /*function supportType(vidType, codType) {
            return document.createElement('video').canPlayType(vidType + ';codecs="' + codType + '"')
@@ -493,6 +514,10 @@ export default {
   cursor: pointer;
   transform: translateZ(0);
   overflow: hidden;
+
+  .filepond--file-info-sub {
+    display: none;
+  }
 }
 
 ::v-deep .filepond--file:before {
