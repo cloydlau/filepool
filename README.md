@@ -66,6 +66,7 @@ Vue.use(Filepool, { url: '接口地址' })
 | proxy | 代理 | global | Object | | |
 | normalizer | 接口参数/返回值格式配置 | global | Object | | *详见下方说明 |
 | delConfirmation | 是否在删除文件时弹框确认 | global | Boolean | | false |
+| base64Encoding | 在没有配置request时，是否将文件进行base64编码 | global, props | Boolean | | false |
 
 <br/>
 

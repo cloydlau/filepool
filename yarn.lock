@@ -6216,13 +6216,12 @@ pkg-up@^3.1.0:
   dependencies:
     find-up "^3.0.0"
 
-plain-kit@^0.3.0-rc.6:
-  version "0.3.0-rc.6"
-  resolved "https://registry.npm.taobao.org/plain-kit/download/plain-kit-0.3.0-rc.6.tgz#0f3a38d825d9718075db2b85f2f0eeae4f64d629"
-  integrity sha1-Dzo42CXZcYB12yuF8vDurk9k1ik=
+plain-kit@^0.3.0-rc.12:
+  version "0.3.0-rc.12"
+  resolved "https://registry.npmjs.org/plain-kit/-/plain-kit-0.3.0-rc.12.tgz#c3806bd150ca5dfa2015387be646ce6e5e97196f"
+  integrity sha512-OA1zuGjIlq1xFYGmf9S4I7o0CQa3mG9bISi5pIPSI9MD7PxoK0bMbpBbheK1O4RuZxKTSbJh8eIXXbaol3ja2g==
   dependencies:
     animate.css "^4.1.1"
-    axios "^0.20.0"
     core-js "^3.6.0"
     dayjs "^1.8.36"
     lodash "^4.17.20"

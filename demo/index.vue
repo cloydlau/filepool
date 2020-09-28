@@ -70,10 +70,5 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.el-form {
-  border: 2px solid lightblue;
-  border-radius: 16px;
-  padding: 16px;
-  margin-top: 32px;
-}
+
 </style>

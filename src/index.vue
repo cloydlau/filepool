@@ -195,7 +195,7 @@ export default {
         this.base64Encoding :
         typeof base64Encoding === 'boolean' ?
           base64Encoding :
-          true
+          false
     },
   },
   data () {
