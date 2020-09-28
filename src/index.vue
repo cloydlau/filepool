@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="disabled">
+    <div v-if="Disabled">
       <el-link v-for="(v, index) of files" :key="index" @click="view(v.source)">点击查看 <i class="el-icon-view"/></el-link>
     </div>
     <template v-else>
@@ -50,7 +50,7 @@
                  @init="handleFilePondInit"
                  :beforeAddFile="beforeAddFile"
                  @activatefile="onActivateFile"
-                 :disabled="disabled"
+                 :disabled="Disabled"
                  @updatefiles="onUpdateFiles"
                  :beforeRemoveFile="beforeRemoveFile"
                  :allowDrop="false"
@@ -97,6 +97,11 @@ import { getOrigin, headersToString, isArrayJSON } from './utils'
 
 export default {
   name: 'Filepool',
+  inject: {
+    elForm: {
+      default: ''
+    },
+  },
   props: {
     value: {
       validator: value => ['String', 'Null', 'Array'].includes(typeOf(value)),
@@ -157,6 +162,9 @@ export default {
     base64Encoding: {}
   },
   computed: {
+    Disabled () {
+      return this.disabled || (this.elForm || {}).disabled
+    },
     format () {
       if (this.fileType) {
         if (typeof this.fileType === 'string') {
