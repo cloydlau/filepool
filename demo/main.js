@@ -5,13 +5,17 @@ import 'element-ui/lib/theme-chalk/index.css'
 import ElementUI from 'element-ui'
 Vue.use(ElementUI)
 
+import axios from 'axios'
+const request = axios.create()
+request.interceptors.response.use(response => response.data)
+
 import Filepool from '../src/main.js'
 Vue.use(Filepool, {
-  url: '',
-  request: null,
+  url: 'https://developer.yjctrip.com/upload-api/chunkUpload',
+  request,
   chunk: true,
   chunkSize: 10,
-  param: {},
+  param: { domainId: 4, dir: 'img' },
   maxSize: 200,
   count: 1,
   fileTypeMap: {

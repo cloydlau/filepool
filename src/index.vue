@@ -150,18 +150,31 @@ export default {
     maxSize: {
       validator: value => {
         if (typeof value !== 'number') {
-          console.error('maxSize必须为Number类型')
+          console.error('[Filepool] maxSize必须为Number类型')
           return false
         } else if (value <= 0) {
-          console.error('maxSize必须大于0')
+          console.error('[Filepool] maxSize必须大于0')
           return false
         }
         return true
       }
     },
-    base64Encoding: {}
+    base64Encoding: {},
+    request: {
+      validator: value => {
+        if (!['Boolean', 'Function'].includes(typeOf(value)) || value === true) {
+          console.error('[Filepool] request需为Function类型或false')
+          return false
+        }
+        return true
+      }
+    }
   },
   computed: {
+    Request () {
+      return this.request !== undefined ?
+        this.request : request
+    },
     Disabled () {
       return this.disabled || (this.elForm || {}).disabled
     },
@@ -214,10 +227,12 @@ export default {
         show: false,
         src: null
       },*/
+      addingFile: false,
       percentage: percentage.value,
       server: {
         load: (source, load, error, progress, abort, headers) => {
-          if (headForSize && typeof request === 'function') {
+          // 回显文件大小
+          if (headForSize && typeof this.Request === 'function') {
             if (!isEmpty(proxy) || !isEmpty(localProxy)) {
               let origin = ''
               try {
@@ -240,7 +255,7 @@ export default {
                 }
               }
             }
-            request({
+            this.Request({
               url: source,
               method: 'HEAD'
             }).then(res => {
@@ -256,6 +271,8 @@ export default {
             }).then(res => {
               return res.blob()
             }).then(load)*/
+          } else {
+            load(null)
           }
           return {
             abort: () => {
@@ -285,7 +302,7 @@ export default {
               return {
                 source: v,
                 options: {
-                  type: typeof request === 'function' ? 'local' : 'limbo'
+                  type: typeof this.Request === 'function' ? 'local' : 'limbo'
                 }
               }
             })
@@ -353,7 +370,7 @@ export default {
           this.files[0] = {
             source: this.link,
             options: {
-              type: typeof request === 'function' ? 'local' : 'limbo'
+              type: typeof this.Request === 'function' ? 'local' : 'limbo'
             }
           }
         } else {
@@ -404,29 +421,31 @@ export default {
       }) : true
     },
     upload (param, curFileType) {
-      fn.call(this, param.file)
-
-      function fn (file) {
-        let promise = api({ ...this.Param, file })
-        if (promise) {
-          promise.then(fileUrl => {
-            this.addFile(fileUrl, 'local', curFileType)
-          })
-        } else {
-          if (this.Base64Encoding) {
-            let reader = new FileReader()
-            reader.readAsDataURL(file)
-            reader.onload = (e) => {
-              this.addFile(e.target.result, 'limbo', curFileType)
-            }
-          } else {
-            this.addFile(file, 'local', curFileType)
+      const file = param.file
+      const promise = api({
+        request: this.Request,
+        data: { ...this.Param, file }
+      })
+      if (promise instanceof Promise) {
+        promise.then(fileUrl => {
+          this.addFile(fileUrl, 'local', curFileType)
+        })
+      } else {
+        if (this.Base64Encoding) {
+          let reader = new FileReader()
+          reader.readAsDataURL(file)
+          reader.onload = (e) => {
+            this.addFile(e.target.result, 'limbo', curFileType)
           }
+        } else {
+          this.addFile(file, 'limbo', curFileType)
         }
       }
     },
     addFile (file, type, curFileType) {
+      this.addingFile = true
       this.$refs.filePond.addFile(file, { type }).then(file => {
+        this.addingFile = false
         if (curFileType) {
           const curFile = fileTypeMap[curFileType]
           curFile.curFile = curFile.curFile ? [...curFile.curFile, file.id] : [file.id]
@@ -434,11 +453,9 @@ export default {
       })
     },
     onUpdateFiles (files) {
-      console.log('onUpdateFiles')
-      return
-      /*if (files && files[0] && files[0].source instanceof File) {
+      if (files && files[0]?.source instanceof File && (this.Request || this.Base64Encoding)) {
         return
-      }*/
+      }
 
       const getValueLen = () => {
         if (this.value) {
@@ -474,25 +491,22 @@ export default {
     handleFilePondInit () {
     },
     beforeAddFile (item) {
-      console.log('beforeAddFile')
-      return true
-
-
-      if (item.file instanceof File) {
+      console.log(this.addingFile)
+      if (this.addingFile) {
+        return true
+      } else {
         /*function supportType(vidType, codType) {
            return document.createElement('video').canPlayType(vidType + ';codecs="' + codType + '"')
         }*/
         const format = item.file.name.replace(/.+\./, '').toLowerCase()
         if (this.format && this.format.length > 0 && !this.format.includes(format)) {
           warn('仅支持' + this.format.join(', '))
-          return false
         }
         const curFileType = this.getCurFileType(format)
         if (curFileType) {
           const curFile = fileTypeMap[curFileType]
           if (curFile.count && curFile.curFile && curFile.curFile.length >= curFile.count) {
             warn('该类型文件最多上传' + curFile.count + '个')
-            return false
           }
         }
         const maxSize = this.getMaxSize(format) * MB
@@ -504,13 +518,10 @@ export default {
             temp = (maxSize / MB).toFixed(2) + 'M'
           }
           warn('不能超过' + temp)
-          return false
         }
 
         this.upload({ file: item.file }, curFileType)
         return false
-      } else {
-        return true
       }
     },
   }

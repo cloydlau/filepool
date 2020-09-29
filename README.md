@@ -31,7 +31,7 @@ $ yarn add filepool
 
 ```js
 import { Filepool } from 'filepool'
-components: { Filepool },
+components: { Filepool }
 ```
 
 **globally**
@@ -52,16 +52,16 @@ Vue.use(Filepool, { url: '接口地址' })
 | --- | --- | --- | --- | --- | --- |
 | value / v-model | 文件链接 | props | String / Array | | |
 | url | 上传接口地址 | global | String | | |
-| request | axios实例（必填） | global | Function | | |
+| request | axios实例，如不传则获取文件本身 | global, props | Function | | |
 | requestConfig | axios配置 | global | Object | | *详见下方说明 |
 | chunk | 是否分片 | global | Boolean | | true |
 | chunkSize | 分片大小 单位MB | global | Number | | 10 |
 | fileType | 指定文件类型（范围） | props | String | 全局配置中fileTypeMap的key 单个用String多个用Array | |
 | fileTypeMap | 文件类型配置 | global | Object | | 见下方说明 |
 | valueType | 数据类型 | props | String | 'String' / 'Array'（不区分大小写） | 单个String多个Array |
-| maxSize | 大小限制 单位MB | global / props | Number | | 200 |
-| count | 数量限制 | global / props | Number | | 1 |
-| param | 上传接口参数（除二进制文件以外的其他参数 二进制文件默认会以file作为参数名） | global / props | Object | | |
+| maxSize | 大小限制 单位MB | global, props | Number | | 200 |
+| count | 数量限制 | global, props | Number | | 1 |
+| param | 上传接口参数（除二进制文件以外的其他参数 二进制文件默认会以file作为参数名） | global, props | Object | | |
 | disabled | 是否禁用 | props | Boolean | | false |
 | localProxy | 本地代理 | global | Object | | |
 | proxy | 代理 | global | Object | | |

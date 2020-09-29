@@ -1,5 +1,7 @@
+import { deeplyAccessProp } from 'plain-kit'
+
 let request, requestConfig, url, globalParam, localProxy, proxy, fileTypeMap, chunkSize, cancel, chunk, globalMaxSize,
-  globalCount, base64Encoding, headForSize, delConfirmation
+  globalCount, base64Encoding, headForSize, delConfirmation, normalizer
 
 let errTime = 0
 
@@ -52,9 +54,14 @@ export const init = (opts = {}) => {
   }
   localProxy = opts.localProxy || {}
   proxy = opts.proxy || {}
+  normalizer = {
+    response: 'data',
+    param: 'file',
+    ...opts.normalizer
+  }
 }
 
-export function api (data) {
+export function api ({ request, data }) {
   if (!url || !request) {
     return
   }
@@ -105,8 +112,17 @@ export function api (data) {
           }),
           ...typeof requestConfig === 'function' ? requestConfig(data) : requestConfig
         }).then(res => {
+          /*let data = res && typeof res === 'string' ?
+            res :
+            deeplyAccessProp(res, normalizer.response)
+          if (typeof data === 'string') {
+
+          } else {
+            console.error('如果接口正常返回，请根据下方request返回值配置正确的normalizer.response：')
+            console.log(res)
+            reject('获取文件url失败')
+          }*/
           let data = 'data' in res ? res.data : res
-          console.log(data)
           if (data && data.status === '200') {
             percentage.value = 100
             resolve(data.url)

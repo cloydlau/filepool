@@ -3933,8 +3933,8 @@ filepond-plugin-media-preview@^1.0.7:
 
 filepond@4.17.1:
   version "4.17.1"
-  resolved "https://registry.npm.taobao.org/filepond/download/filepond-4.17.1.tgz?cache=0&sync_timestamp=1598875765707&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2Ffilepond%2Fdownload%2Ffilepond-4.17.1.tgz#f9412ddc1c4430657480862fe73a5e2ae64cdda2"
-  integrity sha1-+UEt3BxEMGV0gIYv5zpeKuZM3aI=
+  resolved "https://registry.npmjs.org/filepond/-/filepond-4.17.1.tgz#f9412ddc1c4430657480862fe73a5e2ae64cdda2"
+  integrity sha512-r/mdPvnuZn6da4ui3vYzQv2ZYQKBqx5yDAU5pyLNrmS7phYTl1lN8BFOf+uP3bd0OV6+YHo2iwxm+GzfqWqnig==
 
 filesize@^3.6.1:
   version "3.6.1"

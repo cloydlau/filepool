@@ -61,7 +61,8 @@ export default {
         count: 1,
         valueType: undefined,
         disabled: false,
-        base64Encoding: false
+        base64Encoding: false,
+        request: false
       }
     }
   },
@@ -70,5 +71,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-
+::v-deep .el-dialog {
+  width: 500px;
+}
 </style>
