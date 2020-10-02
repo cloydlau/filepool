@@ -72,6 +72,6 @@ export default {
 
 <style lang="scss" scoped>
 ::v-deep .el-dialog {
-  width: 500px;
+  min-width: 500px;
 }
 </style>

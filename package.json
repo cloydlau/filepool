@@ -3,7 +3,7 @@
   "version": "0.0.2",
   "author": "cloydlau",
   "license": "MIT",
-  "description": "A file uploader based on filepond",
+  "description": "An out-of-the-box file uploader based on filepond",
   "keywords": [
     "progress",
     "breakpoint resume",
@@ -30,7 +30,7 @@
     "filepond-plugin-image-overlay": "^1.0.8",
     "filepond-plugin-image-preview": "^4.6.4",
     "filepond-plugin-media-preview": "^1.0.7",
-    "plain-kit": "^0.3.0-rc.12",
+    "plain-kit": "^0.3.0-rc.13",
     "vue-filepond": "^6.0.3"
   },
   "peerDependencies": {

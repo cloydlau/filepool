@@ -204,13 +204,6 @@ export default {
     ValueType () {
       return this.valueType?.toLowerCase()
     },
-    subWindowFeatures () {
-      const width = window.screen.availWidth / 2
-      const height = window.screen.availHeight / 2
-      const top = window.screen.availHeight / 4
-      const left = window.screen.availWidth / 4
-      return `height=${height},innerHeight=${height},width=${width},innerWidth=${width},top=${top},left=${left},toolbar=no,menubar=no,scrollbars=auto,resizeable=no,location=no,status=no`
-    },
     Base64Encoding () {
       return typeof this.base64Encoding === 'boolean' ?
         this.base64Encoding :
@@ -227,12 +220,14 @@ export default {
         show: false,
         src: null
       },*/
+      filename: '',
+      subWindowFeatures: '',
       addingFile: false,
       percentage: percentage.value,
       server: {
         load: (source, load, error, progress, abort, headers) => {
           // 回显文件大小
-          if (headForSize && typeof this.Request === 'function') {
+          if (typeof this.Request === 'function') {
             if (!isEmpty(proxy) || !isEmpty(localProxy)) {
               let origin = ''
               try {
@@ -259,7 +254,9 @@ export default {
               url: source,
               method: 'HEAD'
             }).then(res => {
-              headers(headersToString(res.headers))
+              if (res?.headers) {
+                headers(headersToString(res.headers))
+              }
             }).finally(e => {
               load({
                 body: null
@@ -296,6 +293,8 @@ export default {
           if (typeof newVal === 'string') {
             const arr = isArrayJSON(newVal)
             newVal = arr ? arr : [newVal]
+          } else if (newVal instanceof File) {
+            newVal = [newVal]
           }
           if (newVal.length > 0 && newVal.length !== this.files.length) {
             this.files = newVal.map(v => {
@@ -324,7 +323,21 @@ export default {
       this.percentage = newVal
     })
   },
+  mounted () {
+    this.getSubWindowFeatures()
+    window.addEventListener('resize', this.getSubWindowFeatures)
+  },
+  destroyed () {
+    window.removeEventListener('resize', this.getSubWindowFeatures)
+  },
   methods: {
+    getSubWindowFeatures () {
+      const width = window.screen.availWidth / 2
+      const height = window.screen.availHeight / 2
+      const top = window.screenTop + window.screen.availHeight / 4
+      const left = window.screenLeft + window.screen.availWidth / 4
+      this.subWindowFeatures = `height=${height},innerHeight=${height},width=${width},innerWidth=${width},top=${top},left=${left},toolbar=no,menubar=no,scrollbars=auto,resizeable=no,location=no,status=no`
+    },
     onActivateFile (file) {
       this.view(file.source)
     },
@@ -431,14 +444,10 @@ export default {
           this.addFile(fileUrl, 'local', curFileType)
         })
       } else {
-        if (this.Base64Encoding) {
-          let reader = new FileReader()
-          reader.readAsDataURL(file)
-          reader.onload = (e) => {
-            this.addFile(e.target.result, 'limbo', curFileType)
-          }
-        } else {
-          this.addFile(file, 'limbo', curFileType)
+        let reader = new FileReader()
+        reader.readAsDataURL(file)
+        reader.onload = (e) => {
+          this.addFile(e.target.result, 'local', curFileType)
         }
       }
     },
@@ -475,7 +484,7 @@ export default {
         }
         //auto模式
         else if (!this.ValueType && this.Count === 1) {
-          tempList = tempList.toString()
+          tempList = (!this.Request && !this.Base64Encoding) ? tempList[0] : tempList.toString()
         }
         this.$emit('change', tempList)
         //fix: 用于el表单中 且校验触发方式为blur时 没有生效
@@ -491,7 +500,14 @@ export default {
     handleFilePondInit () {
     },
     beforeAddFile (item) {
-      console.log(this.addingFile)
+      // 文件转换后文件名丢失 重置为正确的文件名
+      if (this.filename) {
+        item.file.name = this.filename
+        this.filename = ''
+      } else if (item.file.name) {
+        this.filename = item.file.name
+      }
+
       if (this.addingFile) {
         return true
       } else {
@@ -501,12 +517,14 @@ export default {
         const format = item.file.name.replace(/.+\./, '').toLowerCase()
         if (this.format && this.format.length > 0 && !this.format.includes(format)) {
           warn('仅支持' + this.format.join(', '))
+          return false
         }
         const curFileType = this.getCurFileType(format)
         if (curFileType) {
           const curFile = fileTypeMap[curFileType]
           if (curFile.count && curFile.curFile && curFile.curFile.length >= curFile.count) {
             warn('该类型文件最多上传' + curFile.count + '个')
+            return false
           }
         }
         const maxSize = this.getMaxSize(format) * MB
@@ -518,10 +536,17 @@ export default {
             temp = (maxSize / MB).toFixed(2) + 'M'
           }
           warn('不能超过' + temp)
+          return false
         }
 
-        this.upload({ file: item.file }, curFileType)
-        return false
+        // 如果添加的是File对象 会被filepond转为Blob重新添加一次
+        // 如果不是File对象 无论是否校验通过 都不予放行 待转为为所需格式后再手动添加
+        if (!this.Request && !this.Base64Encoding) {
+          return true
+        } else {
+          this.upload({ file: item.file }, curFileType)
+          return false
+        }
       }
     },
   }

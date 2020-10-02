@@ -7,7 +7,7 @@ Vue.use(ElementUI)
 
 import axios from 'axios'
 const request = axios.create()
-request.interceptors.response.use(response => response.data)
+request.interceptors.response.use(response => response.config.method.toUpperCase() === 'HEAD' ? response : response.data)
 
 import Filepool from '../src/main.js'
 Vue.use(Filepool, {

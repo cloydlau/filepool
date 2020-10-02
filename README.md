@@ -65,9 +65,16 @@ Vue.use(Filepool, { url: '接口地址' })
 | disabled | 是否禁用 | props | Boolean | | false |
 | localProxy | 本地代理 | global | Object | | |
 | proxy | 代理 | global | Object | | |
-| normalizer | 接口参数/返回值格式配置 | global | Object | | *详见下方说明 |
 | delConfirmation | 是否在删除文件时弹框确认 | global | Boolean | | false |
 | base64Encoding | 在没有配置request时，是否将文件进行base64编码 | global, props | Boolean | | false |
+
+<br/>
+
+> 一般来说，你的需求是通过文件服务器拿到一个文件链接，此时需要配置url和request
+
+> 如果你需要的是二进制文件本身，则不需要配置url和request
+
+> 如果你需要的是base64编码后的文件，将base64Encoding设置为true即可
 
 <br/>
 
@@ -121,65 +128,6 @@ fileTypeMap: {
 }
 ```
 
-normalizer
-
-默认值：
-```json
-{
-  "param": "file", //二进制文件的参数名
-  "response": "data" //返回值（json）中文件链接所在的key路径
-}
-```
-
-比如你的上传接口参数长这样子，其中origin是全局参数：
-
-```json
-{
-  "img": "(binary)",
-  "origin": true,
-  "path": "img"
-}
-```
-
-你可以这样配置：
-
-```js
-Vue.use(Filepool, {
-  normalizer: {
-    param: 'img'
-  },
-  param: {
-    origin: true
-  }
-})
-```
-
-```html
-<Filepool :param="{path:'img'}"/>
-```
-
-如果你的上传接口返回值格式为：
-
-```json
-{
-  "data": {
-    "url": "图片链接"
-  }
-}
-```
-
-配置如下：
-
-```js
-Vue.use(Filepool, {
-  normalizer: {
-    response: 'data.url'
-  },
-})
-```
-
-<br/>
-
 ### Notice
 
 - maxSize权重排序：props ＞ fileTypeMap中对应的maxSize ＞ 全局配置的maxSize
@@ -187,7 +135,3 @@ Vue.use(Filepool, {
 - 全局配置被props中的同名参数覆盖 对象会进行混入
 
 - 如果仅上传图片 请使用imgpond
-
-- 文件链接服务最好能够提供nginx跨域支持（推荐）
-
-- 针对不支持跨域的情况 提供了localhost/线上的代理配置
