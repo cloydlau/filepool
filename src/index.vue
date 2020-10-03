@@ -332,13 +332,12 @@ export default {
     nonUrlFileType: {
       immediate: true,
       handler (newVal) {
-        this.$nextTick(() => {
-          if (newVal) {
-            this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
-          } else {
-            this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
-          }
-        })
+        this.handleUpdateFilesListener()
+      }
+    },
+    Disabled (newVal) {
+      if (!newVal) {
+        this.handleUpdateFilesListener()
       }
     }
   },
@@ -355,6 +354,15 @@ export default {
     window.removeEventListener('resize', this.getSubWindowFeatures)
   },
   methods: {
+    handleUpdateFilesListener () {
+      this.$nextTick(() => {
+        if (this.nonUrlFileType) {
+          this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
+        } else {
+          this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
+        }
+      })
+    },
     getSubWindowFeatures () {
       const width = window.screen.availWidth / 2
       const height = window.screen.availHeight / 2
@@ -405,7 +413,12 @@ export default {
             return
           }
         }
-        warn('暂不支持预览该类型文件')
+        const subWindow = window.open(source, '', this.subWindowFeatures)
+        // 仅下载 需要关闭
+        /*subWindow.addEventListener('load', () => {
+          subWindow.close()
+        }, false)*/
+        return
       }
       warn('暂不支持预览该类型文件')
     },
