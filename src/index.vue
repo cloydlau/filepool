@@ -51,7 +51,6 @@
                  :beforeAddFile="beforeAddFile"
                  @activatefile="onActivateFile"
                  :disabled="Disabled"
-                 @updatefiles="onUpdateFiles"
                  :beforeRemoveFile="beforeRemoveFile"
                  :allowDrop="false"
                  :onwarning="onWarning"
@@ -89,8 +88,8 @@ import {
   globalMaxSize,
   globalCount,
   base64Encoding,
-  headForSize,
-  delConfirmation
+  delConfirmation,
+  headForSize
 } from './config'
 import { warn, confirmation, isEmpty, typeOf } from 'plain-kit'
 import { getOrigin, headersToString, isArrayJSON } from './utils'
@@ -104,7 +103,7 @@ export default {
   },
   props: {
     value: {
-      validator: value => ['String', 'Null', 'Array'].includes(typeOf(value)),
+      validator: value => ['String', 'Null', 'Array', 'File'].includes(typeOf(value)),
     },
     param: {
       type: Object,
@@ -202,7 +201,11 @@ export default {
       }
     },
     ValueType () {
-      return this.valueType?.toLowerCase()
+      const result = this.valueType?.toLowerCase()
+      if (result === 'string' && this.nonUrlFileType) {
+        throw new Error('[Filepool] 文件形式为File时，valueType不能是String')
+      }
+      return result
     },
     Base64Encoding () {
       return typeof this.base64Encoding === 'boolean' ?
@@ -211,6 +214,9 @@ export default {
           base64Encoding :
           false
     },
+    nonUrlFileType () {
+      return !this.Request && !this.Base64Encoding
+    }
   },
   data () {
     return {
@@ -220,6 +226,7 @@ export default {
         show: false,
         src: null
       },*/
+      sychronizing: false,
       filename: '',
       subWindowFeatures: '',
       addingFile: false,
@@ -227,7 +234,7 @@ export default {
       server: {
         load: (source, load, error, progress, abort, headers) => {
           // 回显文件大小
-          if (typeof this.Request === 'function') {
+          if (headForSize && typeof this.Request === 'function') {
             if (!isEmpty(proxy) || !isEmpty(localProxy)) {
               let origin = ''
               try {
@@ -289,6 +296,10 @@ export default {
     value: {
       immediate: true,
       handler (newVal, oldVal) {
+        /*if (this.sychronizing) {
+          this.sychronizing = false
+          return
+        }*/
         if (newVal) {
           if (typeof newVal === 'string') {
             const arr = isArrayJSON(newVal)
@@ -299,9 +310,10 @@ export default {
           if (newVal.length > 0 && newVal.length !== this.files.length) {
             this.files = newVal.map(v => {
               return {
-                source: v,
+                ...typeof v === 'string' && { source: v },
                 options: {
-                  type: typeof this.Request === 'function' ? 'local' : 'limbo'
+                  type: 'local', // local调用load方法 limbo调用restore方法
+                  ...v instanceof File && { file: v }
                 }
               }
             })
@@ -315,6 +327,18 @@ export default {
     fileType (newVal, oldVal) {
       if (!isEmpty(oldVal)) {
         this.onUpdateFiles([])
+      }
+    },
+    nonUrlFileType: {
+      immediate: true,
+      handler (newVal) {
+        this.$nextTick(() => {
+          if (newVal) {
+            this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
+          } else {
+            this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
+          }
+        })
       }
     }
   },
@@ -373,7 +397,17 @@ export default {
       }
     },
     view (source) {
-      window.open(source, '', this.subWindowFeatures)
+      if (this.Request) {
+        const extension = source.replace(/.+\./, '').toLowerCase()
+        for (let k in fileTypeMap) {
+          if (fileTypeMap[k].canPreview && fileTypeMap[k].format.includes(extension)) {
+            window.open(source, '', this.subWindowFeatures)
+            return
+          }
+        }
+        warn('暂不支持预览该类型文件')
+      }
+      warn('暂不支持预览该类型文件')
     },
     /*changeSwitch (isLink) {
       if (isLink && this.files && this.files[0] && this.files[0].source) {
@@ -452,9 +486,7 @@ export default {
       }
     },
     addFile (file, type, curFileType) {
-      this.addingFile = true
       this.$refs.filePond.addFile(file, { type }).then(file => {
-        this.addingFile = false
         if (curFileType) {
           const curFile = fileTypeMap[curFileType]
           curFile.curFile = curFile.curFile ? [...curFile.curFile, file.id] : [file.id]
@@ -462,8 +494,9 @@ export default {
       })
     },
     onUpdateFiles (files) {
-      if (files && files[0]?.source instanceof File && (this.Request || this.Base64Encoding)) {
-        return
+      // beforeAddFile返回false仍然会触发onUpdateFiles
+      if (files && files[0]?.source instanceof File && !this.nonUrlFileType) {
+        return false
       }
 
       const getValueLen = () => {
@@ -478,19 +511,24 @@ export default {
       }
 
       if (files.length !== getValueLen()) {
-        let tempList = files.map(v => v.source)
+        let tempList = files.map(v => this.nonUrlFileType ? v.file : v.source)
         if (this.ValueType === 'string') {
           tempList = this.Count === 1 ? tempList.toString() : JSON.stringify(tempList)
         }
         //auto模式
         else if (!this.ValueType && this.Count === 1) {
-          tempList = (!this.Request && !this.Base64Encoding) ? tempList[0] : tempList.toString()
+          tempList = this.nonUrlFileType ? tempList[0] : tempList.toString()
         }
+        // this.sychronizing = true
         this.$emit('change', tempList)
         //fix: 用于el表单中 且校验触发方式为blur时 没有生效
         if (this.$parent?.$options?._componentTag === ('el-form-item') && this.$parent.rules?.trigger === 'blur') {
           this.$parent.$emit('el.form.blur')
         }
+      }
+
+      if (this.nonUrlFileType) {
+        this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
       }
     },
     /*onActivatefile (file) {
@@ -500,26 +538,16 @@ export default {
     handleFilePondInit () {
     },
     beforeAddFile (item) {
-      // 文件转换后文件名丢失 重置为正确的文件名
-      if (this.filename) {
-        item.file.name = this.filename
-        this.filename = ''
-      } else if (item.file.name) {
-        this.filename = item.file.name
-      }
-
-      if (this.addingFile) {
-        return true
-      } else {
+      const format = item.file.name.replace(/.+\./, '').toLowerCase()
+      const curFileType = this.getCurFileType(format)
+      const validate = () => {
         /*function supportType(vidType, codType) {
-           return document.createElement('video').canPlayType(vidType + ';codecs="' + codType + '"')
+          return document.createElement('video').canPlayType(vidType + ';codecs="' + codType + '"')
         }*/
-        const format = item.file.name.replace(/.+\./, '').toLowerCase()
         if (this.format && this.format.length > 0 && !this.format.includes(format)) {
           warn('仅支持' + this.format.join(', '))
           return false
         }
-        const curFileType = this.getCurFileType(format)
         if (curFileType) {
           const curFile = fileTypeMap[curFileType]
           if (curFile.count && curFile.curFile && curFile.curFile.length >= curFile.count) {
@@ -539,13 +567,39 @@ export default {
           return false
         }
 
-        // 如果添加的是File对象 会被filepond转为Blob重新添加一次
-        // 如果不是File对象 无论是否校验通过 都不予放行 待转为为所需格式后再手动添加
-        if (!this.Request && !this.Base64Encoding) {
-          return true
-        } else {
-          this.upload({ file: item.file }, curFileType)
+        return true
+      }
+
+      /**
+       * 不同文件类型触发流程：
+       *   url:    File → plainObject
+       *   base64: File → Blob
+       *   File:   File
+       */
+
+      if (this.nonUrlFileType) {
+        const check = validate()
+        if (check) {
+          this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
+        }
+        return check
+      } else {
+        if (typeOf(item.file) === 'File') {
+          if (validate()) {
+            // 记录转换为base64之前的文件名（转换后丢失）
+            /*if (this.Base64Encoding) {
+              this.filename = item.file.name
+            }*/
+            this.upload({ file: item.file }, curFileType)
+          }
           return false
+        } else {
+          // 重置为正确的文件名
+          /*if (this.filename && typeOf(item.file) === 'Blob') {
+            item.file.name = this.filename
+            this.filename = ''
+          }*/
+          return true
         }
       }
     },

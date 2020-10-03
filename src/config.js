@@ -29,16 +29,19 @@ export const init = (opts = {}) => {
     image: {
       format: ['jpg', 'jpeg', 'png'],
       maxSize: 10,
+      canPreview: true,
       ...opts.fileTypeMap?.image
     },
     video: {
       format: ['mp4'],
       maxSize: 200,
+      canPreview: true,
       ...opts.fileTypeMap?.video
     },
     audio: {
       format: ['mp3'],
       maxSize: 60,
+      canPreview: true,
       ...opts.fileTypeMap?.audio
     },
     apk: {

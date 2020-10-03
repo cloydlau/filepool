@@ -3933,8 +3933,8 @@ filepond-plugin-media-preview@^1.0.7:
 
 filepond@4.17.1:
   version "4.17.1"
-  resolved "https://registry.npmjs.org/filepond/-/filepond-4.17.1.tgz#f9412ddc1c4430657480862fe73a5e2ae64cdda2"
-  integrity sha512-r/mdPvnuZn6da4ui3vYzQv2ZYQKBqx5yDAU5pyLNrmS7phYTl1lN8BFOf+uP3bd0OV6+YHo2iwxm+GzfqWqnig==
+  resolved "https://registry.npm.taobao.org/filepond/download/filepond-4.17.1.tgz?cache=0&sync_timestamp=1598875765707&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2Ffilepond%2Fdownload%2Ffilepond-4.17.1.tgz#f9412ddc1c4430657480862fe73a5e2ae64cdda2"
+  integrity sha1-+UEt3BxEMGV0gIYv5zpeKuZM3aI=
 
 filesize@^3.6.1:
   version "3.6.1"
@@ -6216,10 +6216,10 @@ pkg-up@^3.1.0:
   dependencies:
     find-up "^3.0.0"
 
-plain-kit@^0.3.0-rc.12:
-  version "0.3.0-rc.12"
-  resolved "https://registry.npmjs.org/plain-kit/-/plain-kit-0.3.0-rc.12.tgz#c3806bd150ca5dfa2015387be646ce6e5e97196f"
-  integrity sha512-OA1zuGjIlq1xFYGmf9S4I7o0CQa3mG9bISi5pIPSI9MD7PxoK0bMbpBbheK1O4RuZxKTSbJh8eIXXbaol3ja2g==
+plain-kit@^0.3.0-rc.13:
+  version "0.3.0-rc.13"
+  resolved "https://registry.npmjs.org/plain-kit/-/plain-kit-0.3.0-rc.13.tgz#78a6c751004d3abcdc2267a3fdafc8d3ae7037bb"
+  integrity sha512-0c/BZqFEa4LfAHnN3VRzvM2o/VV8ElSREjA8wyllcYTwymBhTY/g3iBf/UZu5dBxTxILX+wlId7McSp9x/imWw==
   dependencies:
     animate.css "^4.1.1"
     core-js "^3.6.0"
