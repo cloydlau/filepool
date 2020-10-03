@@ -336,9 +336,7 @@ export default {
       }
     },
     Disabled (newVal) {
-      if (!newVal) {
-        this.handleUpdateFilesListener()
-      }
+      this.handleUpdateFilesListener()
     }
   },
   created () {
@@ -355,13 +353,15 @@ export default {
   },
   methods: {
     handleUpdateFilesListener () {
-      this.$nextTick(() => {
-        if (this.nonUrlFileType) {
-          this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
-        } else {
-          this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
-        }
-      })
+      if (!this.Disabled) {
+        this.$nextTick(() => {
+          if (this.nonUrlFileType) {
+            this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
+          } else {
+            this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
+          }
+        })
+      }
     },
     getSubWindowFeatures () {
       const width = window.screen.availWidth / 2

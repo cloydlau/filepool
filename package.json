@@ -1,6 +1,6 @@
 {
   "name": "filepool",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": "cloydlau",
   "license": "MIT",
   "description": "An out-of-the-box file uploader based on filepond",
