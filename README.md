@@ -45,7 +45,7 @@ Vue.use(Filepool, { url: '接口地址' })
 ### Usage
 
 ```html
-<Filepool v-model="" :fileType=""/>
+<Filepool v-model="" fileType="video"/>
 ```
 
 | 参数 | 说明 | 配置方式 | 类型 | 可选值 | 默认值 |
