@@ -91,8 +91,9 @@ import {
   delConfirmation,
   headForSize
 } from './config'
-import { warn, confirmation, isEmpty, typeOf } from 'plain-kit'
 import { getOrigin, headersToString, isArrayJSON } from './utils'
+import { SweetAlert, isEmpty, typeOf } from 'plain-kit'
+const { warn, confirmation, } = SweetAlert
 
 export default {
   name: 'Filepool',

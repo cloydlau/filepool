@@ -1,5 +1,3 @@
-import { deeplyAccessProp } from 'plain-kit'
-
 let request, requestConfig, url, globalParam, localProxy, proxy, fileTypeMap, chunkSize, cancel, chunk, globalMaxSize,
   globalCount, base64Encoding, headForSize, delConfirmation, normalizer
 

@@ -11,7 +11,7 @@ request.interceptors.response.use(response => response.config.method.toUpperCase
 
 import Filepool from '../src/main.js'
 Vue.use(Filepool, {
-  url: 'https://developer.yjctrip.com/upload-api/chunkUpload',
+  url: '',
   request,
   chunk: true,
   chunkSize: 10,
