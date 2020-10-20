@@ -135,3 +135,7 @@ fileTypeMap: {
 - 全局配置被props中的同名参数覆盖 对象会进行混入
 
 - 如果仅上传图片 请使用imgpond
+
+- fileType如果为Array类型 必须以引用data中变量的形式来传入
+  - 这是因为每次父组件重渲染时 直接写在template中的引用型变量会被重新创建 导致意外触发组件内的监听
+  - 详见 https://github.com/vuejs/vue/issues/9223
