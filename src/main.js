@@ -13,7 +13,13 @@ if (typeof window !== 'undefined' && window.Vue) {
   install(window.Vue)
 }
 
-export default {
-  install,
+// @ts-ignore
+Filepool.install = install
+
+export default Filepool
+
+// todo: deprecated
+export {
   Filepool
 }
+

@@ -31,12 +31,13 @@ $ yarn add filepool
 
 ```js
 import { Filepool } from 'filepool'
-components: { Filepool }
-```
 
-**globally**
-```js
-import Filepool from 'filepool'
+// 组件内引入
+components: { Filepool }
+// ≤0.0.5（deprecated）
+components: { Filepool.Filepool }
+
+// 全局引入
 Vue.use(Filepool, { url: '接口地址' })
 ```
 
