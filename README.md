@@ -30,12 +30,10 @@ $ yarn add filepool
 **Dependencies**：vue element-ui [axios（如果需要分片）]
 
 ```js
-import { Filepool } from 'filepool'
+import Filepool from 'filepool'
 
 // 组件内引入
 components: { Filepool }
-// ≤0.0.5（deprecated）
-components: { Filepool.Filepool }
 
 // 全局引入
 Vue.use(Filepool, { url: '接口地址' })
