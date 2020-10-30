@@ -13,11 +13,12 @@ import Filepool from '../src/main.js'
 Vue.use(Filepool, {
   url: '',
   request,
+  valueType: undefined,
   chunk: true,
   chunkSize: 10,
-  param: { domainId: 4, dir: 'img' },
+  param: { domainId: 1, dir: 'img' },
   maxSize: 200,
-  count: 1,
+  count: 3,
   fileTypeMap: {
     image: {
       format: ['jpg', 'jpeg', 'png'],

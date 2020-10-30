@@ -58,11 +58,11 @@ export default {
         param: {},
         fileType: undefined,
         maxSize: undefined,
-        count: 1,
+        count: undefined,
         valueType: undefined,
         disabled: false,
         base64Encoding: false,
-        request: false
+        //request: false
       }
     }
   },

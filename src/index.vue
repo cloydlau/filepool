@@ -17,43 +17,45 @@
       <el-input v-if="isLink" v-model="link" maxlength="500" show-word-limit @change="changeLink"
                 placeholder="仅支持以.mp4结尾的视频链接"/>-->
       <div v-show="percentage<100" style="display:flex;justify-content:space-between;align-items:flex-end">
-        <el-progress :text-inside="true"
-                     :stroke-width="24"
-                     :percentage="percentage"
-                     style="margin-top:5px;display:inline-block;width:calc(100% - 30px)"
-                     :color="[
-                       {color: '#f56c6c', percentage: 20},
-                       {color: '#e6a23c', percentage: 40},
-                       {color: '#6f7ad3', percentage: 60},
-                       {color: '#1989fa', percentage: 80},
-                       {color: '#5cb87a', percentage: 100}
-                     ]"
+        <el-progress
+          :text-inside="true"
+          :stroke-width="24"
+          :percentage="percentage"
+          style="margin-top:5px;display:inline-block;width:calc(100% - 30px)"
+          :color="[
+            {color: '#f56c6c', percentage: 20},
+            {color: '#e6a23c', percentage: 40},
+            {color: '#6f7ad3', percentage: 60},
+            {color: '#1989fa', percentage: 80},
+            {color: '#5cb87a', percentage: 100}
+          ]"
         />
         <el-tooltip content="取消上传">
           <el-button circle type="info" icon="el-icon-close" size="mini" plain @click="abort"/>
         </el-tooltip>
       </div>
-      <file-pond v-show="percentage===100"
-                 ref="filePond"
-                 :label-idle="'点击上传'+(format?'（支持格式：'+format.join(', ')+'）':'')"
-                 labelFileWaitingForSize="获取文件大小中..."
-                 labelFileLoadError="加载失败"
-                 labelFileLoading="加载中..."
-                 labelTapToCancel="点击取消"
-                 labelTapToRetry="点击重试"
-                 labelFileProcessingComplete="上传成功"
-                 labelTapToUndo="点击删除"
-                 allow-multiple="true"
-                 :server="server"
-                 :files="files"
-                 :max-files="Count||null"
-                 @init="handleFilePondInit"
-                 :beforeAddFile="beforeAddFile"
-                 @activatefile="onActivateFile"
-                 :disabled="Disabled"
-                 :beforeRemoveFile="beforeRemoveFile"
-                 :allowDrop="false"
-                 :onwarning="onWarning"
+      <file-pond
+        v-show="percentage===100"
+        ref="filePond"
+        :label-idle="'点击上传'+(format?'（支持格式：'+format.join(', ')+'）':'')"
+        labelFileWaitingForSize="获取文件大小中..."
+        labelFileLoadError="加载失败"
+        labelFileLoading="加载中..."
+        labelTapToCancel="点击取消"
+        labelTapToRetry="点击重试"
+        labelFileProcessingComplete="上传成功"
+        labelTapToUndo="点击删除"
+        allow-multiple="true"
+        :server="server"
+        :files="files"
+        :max-files="Count||null"
+        @init="handleFilePondInit"
+        :beforeAddFile="beforeAddFile"
+        @activatefile="onActivateFile"
+        :disabled="Disabled"
+        :beforeRemoveFile="beforeRemoveFile"
+        :allowDrop="false"
+        :onwarning="onWarning"
       />
     </template>
   </div>
@@ -77,7 +79,9 @@ vueFilePond(
 )
 import {
   api,
+  url,
   request,
+  param,
   fileTypeMap,
   MB,
   GB,
@@ -85,13 +89,15 @@ import {
   localProxy,
   proxy,
   abort,
-  globalMaxSize,
-  globalCount,
+  maxSize,
+  count,
   base64Encoding,
   delConfirmation,
-  headForSize
+  headForSize,
+  valueType,
+  valueHandler
 } from './config'
-import { getOrigin, headersToString, isArrayJSON } from './utils'
+import { getOrigin, headersToString, isArrayJSON, getFinalProp } from './utils'
 import { SweetAlert, isEmpty, typeOf } from 'plain-kit'
 const { warn, confirmation, } = SweetAlert
 
@@ -103,13 +109,14 @@ export default {
     },
   },
   props: {
+    delConfirmation: {
+      validator: value => ['boolean'].includes(typeOf(value)),
+    },
+    url: String,
     value: {
-      validator: value => ['String', 'Null', 'Array', 'File'].includes(typeOf(value)),
+      validator: value => ['string', 'null', 'array', 'file'].includes(typeOf(value)),
     },
-    param: {
-      type: Object,
-      default: () => {}
-    },
+    param: Object,
     fileType: {
       type: [String, Array],
       validator: value => {
@@ -162,8 +169,8 @@ export default {
     base64Encoding: {},
     request: {
       validator: value => {
-        if (!['Boolean', 'Function'].includes(typeOf(value)) || value === true) {
-          console.error('[Filepool] request需为Function类型或false')
+        if (!['boolean', 'function'].includes(typeOf(value)) || value === true) {
+          console.error('[Filepool] request需为function类型或false')
           return false
         }
         return true
@@ -171,9 +178,14 @@ export default {
     }
   },
   computed: {
+    DelConfirmation () {
+      return getFinalProp(delConfirmation, this.delConfirmation)
+    },
+    Url () {
+      return getFinalProp(url, this.url)
+    },
     Request () {
-      return this.request !== undefined ?
-        this.request : request
+      return getFinalProp(request, this.request)
     },
     Disabled () {
       return this.disabled || (this.elForm || {}).disabled
@@ -192,17 +204,18 @@ export default {
       }
     },
     Count () {
-      return this.count || globalCount
+      return getFinalProp(count, this.count, 1)
     },
     Param () {
       return {
+        ...param,
         ...this.fileType && ({}).toString.call(fileTypeMap[this.fileType]?.param).slice(8, -1) === 'Object' ?
           fileTypeMap[this.fileType]?.param : {},
         ...this.param
       }
     },
     ValueType () {
-      const result = this.valueType?.toLowerCase()
+      const result = getFinalProp(valueType, this.valueType)?.toLowerCase()
       if (result === 'string' && this.nonUrlFileType) {
         throw new Error('[Filepool] 文件形式为File时，valueType不能是String')
       }
@@ -388,7 +401,7 @@ export default {
         }
         return fileTypeMap[this.fileType].maxSize
       }
-      return globalMaxSize
+      return maxSize
     },
     onWarning () {
       warn('超过数量上限，最多上传' + this.Count + '个')
@@ -461,7 +474,7 @@ export default {
       target[property] = temp
     },
     beforeRemoveFile (file) {
-      return delConfirmation ? new Promise((resolve, reject) => {
+      return this.DelConfirmation ? new Promise((resolve, reject) => {
         confirmation({
           title: '删除文件',
           icon: 'warning',
@@ -484,12 +497,13 @@ export default {
     upload (param, curFileType) {
       const file = param.file
       const promise = api({
+        url: this.Url,
         request: this.Request,
-        data: { ...this.Param, file }
+        param: { ...this.Param, file }
       })
       if (promise instanceof Promise) {
         promise.then(fileUrl => {
-          this.addFile(fileUrl, 'local', curFileType)
+          this.addFile(valueHandler ? valueHandler(fileUrl) : fileUrl, 'local', curFileType)
         })
       } else {
         let reader = new FileReader()
@@ -598,7 +612,7 @@ export default {
         }
         return check
       } else {
-        if (typeOf(item.file) === 'File') {
+        if (typeOf(item.file) === 'file') {
           if (validate()) {
             // 记录转换为base64之前的文件名（转换后丢失）
             /*if (this.Base64Encoding) {
@@ -609,7 +623,7 @@ export default {
           return false
         } else {
           // 重置为正确的文件名
-          /*if (this.filename && typeOf(item.file) === 'Blob') {
+          /*if (this.filename && typeOf(item.file) === 'blob') {
             item.file.name = this.filename
             this.filename = ''
           }*/
