@@ -127,6 +127,15 @@ fileTypeMap: {
 }
 ```
 
+<br/>
+
+获取上传进度：
+
+1. 添加一个ref如filepool
+2. this.$refs.filepool?.percentage < 100 // 小于100表示上传中，等于100表示未开始/上传完毕
+
+<br/>
+
 ### Notice
 
 - maxSize权重排序：props ＞ fileTypeMap中对应的maxSize ＞ 全局配置的maxSize
