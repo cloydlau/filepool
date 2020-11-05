@@ -110,7 +110,6 @@ export function api ({ url, request, param }) {
           ...typeof requestConfig === 'function' ? requestConfig(param) : requestConfig
         }).then(res => {
           let data = 'data' in res ? res.data : res
-          console.log(data)
           if (data?.status === '200') {
             percentage.value = 100
             resolve(data.url)
