@@ -1,6 +1,6 @@
 {
   "name": "filepool",
-  "version": "0.0.6-alpha.0",
+  "version": "0.0.6-alpha.1",
   "author": "cloydlau",
   "license": "MIT",
   "description": "An out-of-the-box file uploader based on filepond",
@@ -25,12 +25,13 @@
   },
   "dependencies": {
     "core-js": "^3.6.0",
-    "filepond": "^4.22.0",
+    "elastic-list": "^0.1.1",
+    "filepond": "^4.23.1",
     "filepond-plugin-file-validate-type": "^1.2.5",
     "filepond-plugin-image-overlay": "^1.0.8",
     "filepond-plugin-image-preview": "^4.6.4",
     "filepond-plugin-media-preview": "^1.0.7",
-    "plain-kit": "^0.4.3",
+    "plain-kit": "^0.4.4",
     "vue-filepond": "^6.0.3"
   },
   "peerDependencies": {
@@ -45,7 +46,7 @@
     "babel-plugin-import": "^1.13.1",
     "element-ui": "^2.14.0",
     "json-editor-vue": "^0.0.4",
-    "sass": "^1.28.0",
+    "sass": "^1.29.0",
     "sass-loader": "^10.0.0",
     "vue": "^2.6.12",
     "vue-template-compiler": "^2.6.12"

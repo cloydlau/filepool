@@ -98,8 +98,8 @@ import {
   valueHandler
 } from './config'
 import { getOrigin, headersToString, isArrayJSON, getFinalProp } from './utils'
-import { SweetAlert, isEmpty, typeOf } from 'plain-kit'
-const { warn, confirmation, } = SweetAlert
+import { Swal, isEmpty, typeOf } from 'plain-kit'
+const { warn, confirmation, } = Swal
 
 export default {
   name: 'Filepool',
@@ -549,9 +549,12 @@ export default {
         }
         // this.sychronizing = true
         this.$emit('change', tempList)
-        //fix: 用于el表单中 且校验触发方式为blur时 没有生效
+        // fix: 用于el表单中 且校验触发方式为blur时 没有生效
         if (this.$parent?.$options?._componentTag === ('el-form-item') && this.$parent.rules?.trigger === 'blur') {
-          this.$parent.$emit('el.form.blur')
+          // fix: el-form-item深层嵌套时事件触发早于updatefiles事件
+          this.$parent.$nextTick(() => {
+            this.$parent.$emit('el.form.blur')
+          })
         }
       }
 
