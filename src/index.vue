@@ -56,6 +56,8 @@
         :beforeRemoveFile="beforeRemoveFile"
         :allowDrop="false"
         :onwarning="onWarning"
+        :allowReorder="true"
+        @reorderfiles="emitChange"
       />
     </template>
   </div>
@@ -221,8 +223,8 @@ export default {
     },
     ValueType () {
       const result = getFinalProp(valueType, this.valueType)?.toLowerCase()
-      if (result === 'string' && this.nonUrlFileType) {
-        throw new Error('[Filepool] 文件形式为File时，valueType不能是String')
+      if (result === 'string' && this.fileForm === 'binary') {
+        throw new Error('[Filepool] 文件形态为二进制时，文件的数据类型(valueType参数)不能配置为\'string\'')
       }
       return result
     },
@@ -233,27 +235,21 @@ export default {
           base64Encoding :
           false
     },
-    nonUrlFileType () {
-      return !this.Request && !this.Base64Encoding
-    }
-  },
-  data () {
-    return {
-      /*isLink: false,
-      link: '',
-      preview: {
-        show: false,
-        src: null
-      },*/
-      sychronizing: false,
-      filename: '',
-      subWindowFeatures: '',
-      addingFile: false,
-      percentage: percentage.value,
-      server: {
+    fileForm () {
+      if (this.Url && this.Request) {
+        return 'url'
+      } else if (this.Base64Encoding) {
+        return 'base64'
+      } else {
+        return 'binary'
+      }
+    },
+    server () {
+      // >filepond@4.17.1的版本 && fileForm === 'binary' && 清空文件再上传 满足这三个条件会导致报错
+      return this.fileForm === 'binary' ? undefined : {
         load: (source, load, error, progress, abort, headers) => {
           // 回显文件大小
-          if (headForSize && typeof this.Request === 'function') {
+          if (headForSize && this.fileForm === 'url') {
             if (!isEmpty(proxy) || !isEmpty(localProxy)) {
               let origin = ''
               try {
@@ -303,7 +299,22 @@ export default {
             }
           }
         },
-      },
+      }
+    }
+  },
+  data () {
+    return {
+      /*isLink: false,
+      link: '',
+      preview: {
+        show: false,
+        src: null
+      },*/
+      sychronizing: false,
+      filename: '',
+      subWindowFeatures: '',
+      addingFile: false,
+      percentage: percentage.value,
       files: []
     }
   },
@@ -348,7 +359,7 @@ export default {
         this.onUpdateFiles([])
       }
     },
-    nonUrlFileType: {
+    fileForm: {
       immediate: true,
       handler (newVal) {
         this.handleUpdateFilesListener()
@@ -374,7 +385,7 @@ export default {
     handleUpdateFilesListener () {
       if (!this.Disabled) {
         this.$nextTick(() => {
-          if (this.nonUrlFileType) {
+          if (this.fileForm === 'binary') {
             this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
           } else {
             this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
@@ -424,7 +435,7 @@ export default {
       }
     },
     view (source) {
-      if (this.Request) {
+      if (this.fileForm === 'url') {
         const extension = source.replace(/.+\./, '').toLowerCase()
         for (let k in fileTypeMap) {
           if (fileTypeMap[k].canPreview && fileTypeMap[k].format.includes(extension)) {
@@ -439,7 +450,7 @@ export default {
         }, false)*/
         return
       }
-      warn('暂不支持预览该类型文件')
+      warn('暂不支持预览该文件')
     },
     /*changeSwitch (isLink) {
       if (isLink && this.files && this.files[0] && this.files[0].source) {
@@ -479,25 +490,33 @@ export default {
       target[property] = temp
     },
     beforeRemoveFile (file) {
-      return this.DelConfirmation ? new Promise((resolve, reject) => {
-        confirmation({
-          title: '删除文件',
-          icon: 'warning',
-        }).then(() => {
-          for (let k in fileTypeMap) {
-            if (fileTypeMap[k].curFile) {
-              const i = fileTypeMap[k].curFile.indexOf(file.id)
-              if (i !== -1) {
-                fileTypeMap[k].curFile.splice(i, 1)
-                resolve(true)
+      if (this.DelConfirmation) {
+        return new Promise((resolve, reject) => {
+          confirmation({
+            title: '删除文件',
+            icon: 'warning',
+          }).then(() => {
+            for (let k in fileTypeMap) {
+              if (fileTypeMap[k].curFile) {
+                const i = fileTypeMap[k].curFile.indexOf(file.id)
+                if (i !== -1) {
+                  fileTypeMap[k].curFile.splice(i, 1)
+                  resolve(true)
+                }
               }
             }
-          }
-          resolve(true)
-        }).catch(() => {
-          resolve(false)
+            // 删除前开启监听 否则无法清空
+            this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
+            resolve(true)
+          }).catch(() => {
+            resolve(false)
+          })
         })
-      }) : true
+      } else {
+        // 删除前开启监听 否则无法清空
+        this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
+        return true
+      }
     },
     upload (param, curFileType) {
       const file = param.file
@@ -528,7 +547,7 @@ export default {
     },
     onUpdateFiles (files) {
       // beforeAddFile返回false仍然会触发onUpdateFiles
-      if (files && files[0]?.source instanceof File && !this.nonUrlFileType) {
+      if (files && files[0]?.source instanceof File && this.fileForm !== 'binary') {
         return false
       }
 
@@ -544,27 +563,30 @@ export default {
       }
 
       if (files.length !== getValueLen()) {
-        let tempList = files.map(v => this.nonUrlFileType ? v.file : v.source)
-        if (this.ValueType === 'string') {
-          tempList = this.Count === 1 ? tempList.toString() : JSON.stringify(tempList)
-        }
-        //auto模式
-        else if (!this.ValueType && this.Count === 1) {
-          tempList = this.nonUrlFileType ? tempList[0] : tempList.toString()
-        }
-        // this.sychronizing = true
-        this.$emit('change', tempList)
-        // fix: 用于el表单中 且校验触发方式为blur时 没有生效
-        if (this.$parent?.$options?._componentTag === ('el-form-item') && this.$parent.rules?.trigger === 'blur') {
-          // fix: el-form-item深层嵌套时事件触发早于updatefiles事件
-          this.$parent.$nextTick(() => {
-            this.$parent.$emit('el.form.blur')
-          })
-        }
+        this.emitChange(files)
       }
 
-      if (this.nonUrlFileType) {
+      if (this.fileForm === 'binary') {
         this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
+      }
+    },
+    emitChange (files) {
+      let tempList = files.map(v => this.fileForm === 'binary' ? v.file : v.source)
+      if (this.ValueType === 'string') {
+        tempList = this.Count === 1 ? tempList.toString() : JSON.stringify(tempList)
+      }
+      //auto模式
+      else if (!this.ValueType && this.Count === 1) {
+        tempList = this.fileForm === 'binary' ? tempList[0] : tempList.toString()
+      }
+      // this.sychronizing = true
+      this.$emit('change', tempList)
+      // fix: 用于el表单中 且校验触发方式为blur时 没有生效
+      if (this.$parent?.$options?._componentTag === ('el-form-item') && this.$parent.rules?.trigger === 'blur') {
+        // fix: el-form-item深层嵌套时事件触发早于updatefiles事件
+        this.$parent.$nextTick(() => {
+          this.$parent.$emit('el.form.blur')
+        })
       }
     },
     /*onActivatefile (file) {
@@ -612,10 +634,10 @@ export default {
        *   base64: File → Blob
        *   File:   File
        */
-
-      if (this.nonUrlFileType) {
+      if (this.fileForm === 'binary') {
         const check = validate()
         if (check) {
+          // 如果校验通过前就开启监听 会导致校验失败时仍触发onUpdateFiles
           this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
         }
         return check

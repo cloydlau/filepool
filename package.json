@@ -1,6 +1,6 @@
 {
   "name": "filepool",
-  "version": "0.0.6-alpha.3",
+  "version": "0.0.6",
   "author": "cloydlau",
   "license": "MIT",
   "description": "An out-of-the-box file uploader based on filepond",
@@ -24,13 +24,13 @@
     "lib": "vue-cli-service build --target lib --name filepool src/main.js"
   },
   "dependencies": {
-    "core-js": "^3.6.0",
-    "filepond": "4.17.1",
+    "core-js": "^3.7.0",
+    "filepond": "^4.23.1",
     "filepond-plugin-file-validate-type": "^1.2.5",
     "filepond-plugin-image-overlay": "^1.0.8",
     "filepond-plugin-image-preview": "^4.6.4",
     "filepond-plugin-media-preview": "^1.0.7",
-    "plain-kit": "^0.4.4",
+    "plain-kit": "^0.4.6",
     "vue-filepond": "^6.0.3"
   },
   "peerDependencies": {

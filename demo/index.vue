@@ -29,18 +29,20 @@
         <json-editor-vue v-model="props.param"/>
       </el-form-item>
       <el-form-item label="disabled">
-        <el-switch v-model="props.disabled"
-                   active-color="#13ce66"
-                   :active-value="true"
-                   :inactive-value="false">
-        </el-switch>
+        <el-switch
+          v-model="props.disabled"
+          active-color="#13ce66"
+          :active-value="true"
+          :inactive-value="false"
+        />
       </el-form-item>
       <el-form-item label="base64Encoding">
-        <el-switch v-model="props.base64Encoding"
-                   active-color="#13ce66"
-                   :active-value="true"
-                   :inactive-value="false">
-        </el-switch>
+        <el-switch
+          v-model="props.base64Encoding"
+          active-color="#13ce66"
+          :active-value="true"
+          :inactive-value="false"
+        />
       </el-form-item>
     </el-form>
   </el-dialog>

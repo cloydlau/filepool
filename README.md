@@ -15,6 +15,7 @@
 - √ 支持上传进度显示、中途取消
 - √ 支持格式限制/大小限制/数量限制 可针对不同类型分别设置
 - √ 自动根据数量限制选择String或Array数据类型 也可以手动指定
+- √ 支持拖拉拽排序（响应式）
 - √ 支持上传后预览/禁用时预览
 - √ 支持element-ui中el-form的全局disabled
 - √ 全局安装/局部引入 通用参数仅需配置一次
@@ -47,17 +48,17 @@ Vue.use(Filepool, { url: '接口地址' })
 <Filepool v-model="" fileType="video"/>
 ```
 
-| 参数 | 说明 | 配置方式 | 类型 | 可选值 | 默认值 |
+| Attribute | Description | Configuration Mode | Type | Accepted Values | Default |
 | --- | --- | --- | --- | --- | --- |
 | value / v-model | 文件链接 | props | string / array | | |
 | url | 上传接口地址 | global | string | | |
 | request | axios实例，如不传则获取文件本身 | global, props | function | | |
-| requestConfig | axios配置 | global | object | | *详见下方说明 |
+| requestConfig | axios配置 | global | object | | *see below* |
 | chunk | 是否分片 | global | boolean | | true |
 | chunkSize | 分片大小 单位MB | global | number | | 10 |
 | fileType | 指定文件类型（范围） | props | string | 全局配置中fileTypeMap的key 单个用string多个用array | |
-| fileTypeMap | 文件类型配置 | global | object | | 见下方说明 |
-| valueType | 数据类型 | props | string | 'string' / 'array'（不区分大小写） | 单个string多个array |
+| fileTypeMap | 文件类型配置 | global | object | | *see below* |
+| valueType | 数据类型 | props | string | 'string' / 'array' | *see below* |
 | maxSize | 大小限制 单位MB | global, props | number | | 200 |
 | count | 数量限制 | global, props | number | | 1 |
 | param | 上传接口参数（除二进制文件以外的其他参数 二进制文件默认会以file作为参数名） | global, props | object | | |
@@ -66,15 +67,23 @@ Vue.use(Filepool, { url: '接口地址' })
 | proxy | 代理 | global | object | | |
 | delConfirmation | 是否在删除文件时弹框确认 | global | boolean | | false |
 | base64Encoding | 在没有配置request时，是否将文件进行base64编码 | global, props | boolean | | false |
-| placeholder | 输入预期值的提示信息（hint） | global, props | string | | '点击上传[（支持格式：mp4）]' |
+| placeholder | 提示信息（hint） | global, props | string | | '点击上传[（支持格式：mp4）]' |
 
 <br/>
 
-> 一般来说，你的需求是通过文件服务器拿到一个文件链接，此时需要配置url和request
+文件形态：
 
-> 如果你需要的是二进制文件本身，则不需要配置url和request
+- url: 配置了url和request时进入该模式
+- 二进制File: 没有配置url或request时进入该模式
+- base64: 没有配置url或request，且将base64Encoding设置为true时进入该模式
 
-> 如果你需要的是base64编码后的文件，将base64Encoding设置为true即可
+<br/>
+
+文件数据类型：
+
+- auto（默认）: count为1时采用string，count>1时采用array
+- string: 字符串类型，count为1时采用string，count＞1时采用json-string
+- array: 数组类型
 
 <br/>
 
