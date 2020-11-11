@@ -37,7 +37,7 @@
       <file-pond
         v-show="percentage===100"
         ref="filePond"
-        :label-idle="'点击上传'+(format?'（支持格式：'+format.join(', ')+'）':'')"
+        :label-idle="Placeholder"
         labelFileWaitingForSize="获取文件大小中..."
         labelFileLoadError="加载失败"
         labelFileLoading="加载中..."
@@ -95,7 +95,8 @@ import {
   delConfirmation,
   headForSize,
   valueType,
-  valueHandler
+  valueHandler,
+  placeholder
 } from './config'
 import { getOrigin, headersToString, isArrayJSON, getFinalProp } from './utils'
 import { Swal, isEmpty, typeOf } from 'plain-kit'
@@ -113,6 +114,7 @@ export default {
       validator: value => ['boolean'].includes(typeOf(value)),
     },
     url: String,
+    placeholder: String,
     value: {
       validator: value => ['string', 'null', 'array', 'file'].includes(typeOf(value)),
     },
@@ -178,6 +180,9 @@ export default {
     }
   },
   computed: {
+    Placeholder () {
+      return getFinalProp(placeholder, this.placeholder, '点击上传' + (this.format ? '（支持格式：' + this.format.join(', ') + '）' : ''))
+    },
     DelConfirmation () {
       return getFinalProp(delConfirmation, this.delConfirmation)
     },

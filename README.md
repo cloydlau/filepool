@@ -49,23 +49,24 @@ Vue.use(Filepool, { url: '接口地址' })
 
 | 参数 | 说明 | 配置方式 | 类型 | 可选值 | 默认值 |
 | --- | --- | --- | --- | --- | --- |
-| value / v-model | 文件链接 | props | String / Array | | |
-| url | 上传接口地址 | global | String | | |
-| request | axios实例，如不传则获取文件本身 | global, props | Function | | |
-| requestConfig | axios配置 | global | Object | | *详见下方说明 |
-| chunk | 是否分片 | global | Boolean | | true |
-| chunkSize | 分片大小 单位MB | global | Number | | 10 |
-| fileType | 指定文件类型（范围） | props | String | 全局配置中fileTypeMap的key 单个用String多个用Array | |
-| fileTypeMap | 文件类型配置 | global | Object | | 见下方说明 |
-| valueType | 数据类型 | props | String | 'String' / 'Array'（不区分大小写） | 单个String多个Array |
-| maxSize | 大小限制 单位MB | global, props | Number | | 200 |
-| count | 数量限制 | global, props | Number | | 1 |
-| param | 上传接口参数（除二进制文件以外的其他参数 二进制文件默认会以file作为参数名） | global, props | Object | | |
-| disabled | 是否禁用 | props | Boolean | | false |
-| localProxy | 本地代理 | global | Object | | |
-| proxy | 代理 | global | Object | | |
-| delConfirmation | 是否在删除文件时弹框确认 | global | Boolean | | false |
-| base64Encoding | 在没有配置request时，是否将文件进行base64编码 | global, props | Boolean | | false |
+| value / v-model | 文件链接 | props | string / array | | |
+| url | 上传接口地址 | global | string | | |
+| request | axios实例，如不传则获取文件本身 | global, props | function | | |
+| requestConfig | axios配置 | global | object | | *详见下方说明 |
+| chunk | 是否分片 | global | boolean | | true |
+| chunkSize | 分片大小 单位MB | global | number | | 10 |
+| fileType | 指定文件类型（范围） | props | string | 全局配置中fileTypeMap的key 单个用string多个用array | |
+| fileTypeMap | 文件类型配置 | global | object | | 见下方说明 |
+| valueType | 数据类型 | props | string | 'string' / 'array'（不区分大小写） | 单个string多个array |
+| maxSize | 大小限制 单位MB | global, props | number | | 200 |
+| count | 数量限制 | global, props | number | | 1 |
+| param | 上传接口参数（除二进制文件以外的其他参数 二进制文件默认会以file作为参数名） | global, props | object | | |
+| disabled | 是否禁用 | props | boolean | | false |
+| localProxy | 本地代理 | global | object | | |
+| proxy | 代理 | global | object | | |
+| delConfirmation | 是否在删除文件时弹框确认 | global | boolean | | false |
+| base64Encoding | 在没有配置request时，是否将文件进行base64编码 | global, props | boolean | | false |
+| placeholder | 输入预期值的提示信息（hint） | global, props | string | | '点击上传[（支持格式：mp4）]' |
 
 <br/>
 

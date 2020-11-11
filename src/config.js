@@ -1,5 +1,5 @@
 let request, requestConfig, url, param, localProxy, proxy, fileTypeMap, chunkSize, cancel, chunk, maxSize,
-  count, base64Encoding, headForSize, delConfirmation, normalizer, valueType, valueHandler
+  count, base64Encoding, headForSize, delConfirmation, normalizer, valueType, valueHandler, placeholder
 
 let errTime = 0
 
@@ -11,6 +11,7 @@ export const GB = Math.pow(1024, 3)
 export const MB = Math.pow(1024, 2)
 
 export const init = (opts = {}) => {
+  placeholder = opts.placeholder
   valueHandler = opts.valueHandler
   valueType = opts.valueType
   request = opts.request
@@ -197,5 +198,6 @@ export {
   delConfirmation,
   valueType,
   param,
-  valueHandler
+  valueHandler,
+  placeholder
 }
