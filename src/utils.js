@@ -1,3 +1,6 @@
+export const GB = Math.pow(1024, 3)
+export const MB = Math.pow(1024, 2)
+
 export function getOrigin (url) {
   if (url.startsWith('//')) {
     return '//' + new URL(window.location.protocol + url).host
@@ -10,8 +13,8 @@ export function getOrigin (url) {
 
 export function headersToString (headers) {
   return Object.keys(headers)
-    .map(h => `${h}: ${headers[h]}`)
-    .join('\r\n')
+  .map(h => `${h}: ${headers[h]}`)
+  .join('\r\n')
 }
 
 export function isArrayJSON (str) {
@@ -40,4 +43,27 @@ export function getFinalProp (globalProp, prop, defaultValue) {
   return prop !== undefined ? prop :
     globalProp !== undefined ? globalProp :
       defaultValue
+}
+
+export function sliceFile (file, chunkSize = 10 * MB) {
+  let chunks = []
+  if (file instanceof File) {
+    if (file.size > chunkSize) {
+      let start = 0, end = 0
+      while (true) {
+        if (end + chunkSize >= file.size) {
+          chunks.push(file.slice(start))
+          break
+        } else {
+          end += chunkSize
+          let blob = file.slice(start, end)
+          chunks.push(blob)
+          start += chunkSize
+        }
+      }
+    } else {
+      chunks.push(file.slice(0))
+    }
+  }
+  return chunks
 }

@@ -16,8 +16,8 @@
       </el-form-item>
       <el-form-item label="valueType">
         <el-radio v-model="props.valueType" :label="undefined">自动</el-radio>
-        <el-radio v-model="props.valueType" label="String">String</el-radio>
-        <el-radio v-model="props.valueType" label="Array">Array</el-radio>
+        <el-radio v-model="props.valueType" label="string">string</el-radio>
+        <el-radio v-model="props.valueType" label="array">array</el-radio>
       </el-form-item>
       <el-form-item label="maxSize">
         <el-input-number v-model="props.maxSize" clearable :min="0"/>
@@ -58,7 +58,7 @@ export default {
       value: '',
       props: {
         param: {},
-        fileType: undefined,
+        fileType: ['abc'],
         maxSize: undefined,
         count: undefined,
         valueType: undefined,
@@ -74,6 +74,6 @@ export default {
 
 <style lang="scss" scoped>
 ::v-deep .el-dialog {
-  min-width: 500px;
+  min-width: 600px;
 }
 </style>

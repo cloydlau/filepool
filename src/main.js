@@ -1,5 +1,6 @@
 import Filepool from './index.vue'
-import {init} from "./config"
+import { init } from './config'
+import { MB, GB, sliceFile } from './utils'
 
 const install = (Vue, opts = {}) => {
   if (install.installed) {
@@ -18,8 +19,9 @@ Filepool.install = install
 
 export default Filepool
 
-// todo: deprecated
 export {
-  Filepool
+  Filepool, // todo: deprecated
+  sliceFile,
+  MB, GB,
 }
 
