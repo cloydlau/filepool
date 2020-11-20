@@ -19,8 +19,7 @@ Vue.use(Filepool, {
       maxSize: 2.01
     }
   },
-  upload ({ file, jsonToFormData, setProgress, }) {
-    setProgress(0)
+  upload ({ file, jsonToFormData, }) {
     return new Promise((resolve, reject) => {
       request({
         url: '',
