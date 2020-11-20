@@ -17,7 +17,6 @@ export function upload_preset ({
 }) {
   const chunkSize = 10 * MB
 
-  setProgress(0)
   failTimes = 0
   cancelUpload = null
 
