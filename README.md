@@ -80,8 +80,7 @@ import Filepool from 'filepool'
 import request from '@/utils/request' // 你的axios封装
 
 Vue.use(Filepool, {
-  upload ({ file, jsonToFormData, setProgress, }) {
-    setProgress(0)
+  upload ({ file, jsonToFormData, }) {
     return new Promise((resolve, reject) => {
       request({
         url: '',

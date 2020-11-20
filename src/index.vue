@@ -568,6 +568,7 @@ export default {
       }
 
       if (promise instanceof Promise) {
+        this.progress = 0
         promise.then(fileUrl => {
           this.addFile(valueHandler ? valueHandler(fileUrl) : fileUrl, 'local', curFileType)
         }).catch(e => {
