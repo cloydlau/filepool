@@ -64,7 +64,7 @@ export default {
         valueType: undefined,
         disabled: false,
         base64Encoding: false,
-        //request: false,
+        upload: false,
       }
     }
   },

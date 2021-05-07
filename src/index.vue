@@ -74,35 +74,22 @@ import FilePondPluginMediaPreview from 'filepond-plugin-media-preview'
 
 //import FilepondPluginDragReorder from 'filepond-plugin-drag-reorder'
 
-vueFilePond(
+const FilePond = vueFilePond(
   FilePondPluginMediaPreview,
   FilePondPluginImagePreview,
   //FilepondPluginDragReorder,
 )
-import {
-  upload,
-  url,
-  request,
-  requestConfig,
-  param,
-  fileTypeCatalog,
-  localProxy,
-  proxy,
-  onAbort,
-  maxSize,
-  count,
-  base64Encoding,
-  delConfirmation,
-  headForSize,
-  valueType,
-  valueHandler,
-  placeholder,
-} from './config'
+import globalProps from './config'
 import { MB, GB, getOrigin, headersToString, isArrayJSON, getFinalProp, sliceFile } from './utils'
-import { Swal, isEmpty, typeOf, jsonToFormData } from 'plain-kit'
+import 'kikimore/dist/style.css'
+import { Swal } from 'kikimore'
+import { isEmpty, typeOf, jsonToFormData } from 'kayran'
 import { upload_preset, onAbort_preset } from './server'
-const { warn, confirmation, err } = Swal
-
+import { name } from '../package.json'
+const { warning, confirm, error } = Swal
+import axios from 'axios'
+const request = axios.create()
+request.interceptors.response.use(response => response.config.method.toUpperCase() === 'HEAD' ? response : response.data)
 export default {
   name: 'Filepool',
   inject: {
@@ -114,7 +101,7 @@ export default {
     upload: {
       validator: value => {
         if (!['boolean', 'function'].includes(typeOf(value)) || value === true) {
-          console.error('[Filepool] upload需为function类型 或传false以进入离线模式')
+          console.error(`[${name}] upload需为function类型 或传false以进入离线模式`)
           return false
         }
         return true
@@ -130,31 +117,11 @@ export default {
     },
     fileType: {
       type: [String, Array],
-      validator: value => {
-        if (value) {
-          if (typeof value === 'string') {
-            if (!(value in fileTypeCatalog)) {
-              console.error('全局配置中不存在' + value + '类型')
-              return false
-            }
-            return true
-          } else {
-            for (let v of value) {
-              if (!(v in fileTypeCatalog)) {
-                console.error('全局配置中不存在' + v + '类型')
-                return false
-              }
-            }
-            return true
-          }
-        }
-        return true
-      },
     },
     count: {
       validator: value => {
         if (!Number.isInteger(value)) {
-          console.error('count必须为Number类型的正整数')
+          console.error('count需为正整数')
           return false
         } else if (value < 1) {
           console.error('count不能小于1')
@@ -168,53 +135,73 @@ export default {
     maxSize: {
       validator: value => {
         if (typeof value !== 'number') {
-          console.error('[Filepool] maxSize必须为Number类型')
+          console.error(`[${name}] maxSize必须为Number类型`)
           return false
         } else if (value <= 0) {
-          console.error('[Filepool] maxSize必须大于0')
+          console.error(`[${name}] maxSize必须大于0`)
           return false
         }
         return true
       }
     },
     base64Encoding: {},
-
-    // todo: deprecated
-    url: String,
-    param: Object,
-    request: {
-      validator: value => {
-        if (!['boolean', 'function'].includes(typeOf(value)) || value === true) {
-          console.error('[Filepool] request需为function类型 或传false以进入离线模式')
-          return false
-        }
-        return true
-      }
-    }
   },
   computed: {
+    FileTypeCatalog () {
+      return {
+        ...globalProps.fileTypeCatalog,
+        image: {
+          maxSize: 10,
+          accept: '.jpg,.jpeg,.png',
+          ...globalProps.fileTypeCatalog?.image,
+          canPreview: true,
+        },
+        video: {
+          maxSize: 200,
+          accept: '.mp4',
+          ...globalProps.fileTypeCatalog?.video,
+          canPreview: true,
+        },
+        audio: {
+          maxSize: 60,
+          accept: '.mp3',
+          ...globalProps.fileTypeCatalog?.audio,
+          canPreview: true,
+        },
+        apk: {
+          maxSize: 200,
+          accept: '.apk',
+          ...globalProps.fileTypeCatalog?.apk,
+        },
+        excel: {
+          accept: '.xlsx,.xls',
+          maxSize: 100,
+          ...globalProps.fileTypeCatalog?.excel,
+        },
+      }
+    },
     percentage () {
       const result = Math.round(this.progress * 100)
       // progressEvent.loaded 是可能大于 file.size 的
       return result > 100 ? 100 : result
     },
     Placeholder () {
-      return getFinalProp(placeholder, this.placeholder, '点击上传' + (this.acceptText ? `（${this.acceptText}）` : ''))
+      return getFinalProp(globalProps.placeholder, this.placeholder, '点击上传' + (this.acceptText ? `（${this.acceptText}）` : ''))
     },
     DelConfirmation () {
-      return getFinalProp(delConfirmation, this.delConfirmation)
+      return getFinalProp(globalProps.delConfirmation, this.delConfirmation)
     },
     Disabled () {
-      return this.disabled || (this.elForm || {}).disabled
+      return this.disabled || this.elForm?.disabled
     },
     accept () {
       if (this.fileType) {
         let arr = []
         if (typeof this.fileType === 'string') {
-          arr = [fileTypeCatalog[this.fileType].accept]
+          arr = [this.FileTypeCatalog[this.fileType].accept]
         } else {
           this.fileType.map(v => {
-            arr.push(fileTypeCatalog[v].accept)
+            arr.push(this.FileTypeCatalog[v].accept)
           })
         }
         return arr.join(',')
@@ -226,20 +213,20 @@ export default {
       }
     },
     Count () {
-      return getFinalProp(count, this.count, 1)
+      return getFinalProp(globalProps.count, this.count, 1)
     },
     ValueType () {
-      const result = getFinalProp(valueType, this.valueType)?.toLowerCase()
+      const result = getFinalProp(globalProps.valueType, this.valueType)?.toLowerCase()
       if (result === 'string' && this.fileForm === 'binary') {
-        throw new Error('[Filepool] 文件形态为二进制时，文件的数据类型(valueType参数)不能配置为\'string\'')
+        throw new Error(`[${name}] 文件形态为二进制时，文件的数据类型(valueType参数)不能配置为\'string\'`)
       }
       return result
     },
     Base64Encoding () {
-      return getFinalProp(base64Encoding, this.base64Encoding, false)
+      return getFinalProp(globalProps.base64Encoding, this.base64Encoding, false)
     },
     fileForm () {
-      if (getFinalProp(upload, this.upload) || (this.Url && this.Request)) {
+      if (getFinalProp(globalProps.upload, this.upload) || (this.Url && this.Request)) {
         return 'url'
       } else if (this.Base64Encoding) {
         return 'base64'
@@ -252,8 +239,8 @@ export default {
       return this.fileForm === 'binary' ? undefined : {
         load: (source, load, error, progress, abort, headers) => {
           // 回显文件大小
-          if (headForSize && this.fileForm === 'url') {
-            if (!isEmpty(proxy) || !isEmpty(localProxy)) {
+          if (this.fileForm === 'url') {
+            /*if (!isEmpty(proxy) || !isEmpty(localProxy)) {
               let origin = ''
               try {
                 origin = getOrigin(source)
@@ -274,25 +261,30 @@ export default {
                   }
                 }
               }
-            }
-            this.Request({
-              url: source,
+            }*/
+            // todo: 获取文件体积
+            /*fetch(source, {
+              mode: 'cors',
               method: 'HEAD'
-            }).then(res => {
-              if (res?.headers) {
+            })
+            .then(res => {
+              if (res.headers) {
                 headers(headersToString(res.headers))
               }
-            }).finally(e => {
+            })
+            .catch(e => {
+              console.error(e)
+              console.warn(`[${name}] 获取文件体积失败 如果上方有跨域错误提示 说明由跨域造成`)
+            })
+            .finally(e => {
               load({
                 body: null
               })
-              //或者load(null)
+              // 或者load(null)
+            })*/
+            load({
+              body: null
             })
-            /*fetch(source, {
-              mode: 'cors',
-            }).then(res => {
-              return res.blob()
-            }).then(load)*/
           } else {
             load(null)
           }
@@ -304,23 +296,8 @@ export default {
         },
       }
     },
-
-    // todo: deprecated
-    Url () {
-      return getFinalProp(url, this.url)
-    },
-    Request () {
-      return getFinalProp(request, this.request)
-    },
-    Param () {
-      return {
-        ...param,
-        ...this.fileType && typeOf(fileTypeCatalog[this.fileType]?.param) === 'object' ?
-          fileTypeCatalog[this.fileType]?.param : {},
-        ...this.param
-      }
-    },
   },
+  components: { FilePond },
   data () {
     return {
       /*isLink: false,
@@ -373,9 +350,19 @@ export default {
       }
     },
     //更换fileType时，清空value
-    fileType (newVal, oldVal) {
-      if (!isEmpty(oldVal)) {
-        this.onUpdateFiles([])
+    fileType: {
+      immediate: true,
+      handler (n, o) {
+        if (n) {
+          for (let v of (Array.isArray(n) ? n : [n])) {
+            if (!(v in this.FileTypeCatalog)) {
+              throw Error('全局配置中不存在' + v + '类型')
+            }
+          }
+        }
+        if (!isEmpty(o)) {
+          this.onUpdateFiles([])
+        }
       }
     },
     fileForm: {
@@ -419,7 +406,7 @@ export default {
     },
     OnAbort () {
       this.progress = 1
-      getFinalProp(onAbort, this.onAbort, onAbort_preset)()
+      getFinalProp(globalProps.onAbort, this.onAbort, onAbort_preset)()
     },
     getMaxSize (extension) {
       if (this.maxSize) {
@@ -427,24 +414,24 @@ export default {
       } else if (this.fileType) {
         if (this.fileType instanceof Array) {
           for (let v of this.fileType) {
-            if (fileTypeCatalog[v].accept?.includes(extension)) {
-              return fileTypeCatalog[v].maxSize
+            if (this.FileTypeCatalog[v].accept?.includes(extension)) {
+              return this.FileTypeCatalog[v].maxSize
             }
           }
         }
-        return fileTypeCatalog[this.fileType].maxSize
+        return this.FileTypeCatalog[this.fileType].maxSize
       }
-      return maxSize
+      return globalProps.maxSize || 200
     },
     onWarning () {
-      warn('超过数量上限，最多上传' + this.Count + '个')
+      warning('超过数量上限，最多上传' + this.Count + '个')
     },
     getCurFileType (extension) {
       if (this.fileType) {
         // 允许多种文件类型时 需要遍历才能知道当前用户选择的文件属于哪种
         if (this.fileType instanceof Array) {
           for (let v of this.fileType) {
-            if (fileTypeCatalog[v].accept?.includes(extension)) {
+            if (this.FileTypeCatalog[v].accept?.includes(extension)) {
               return v
             }
           }
@@ -456,8 +443,8 @@ export default {
     view (source) {
       if (this.fileForm === 'url') {
         const extension = source.replace(/.+\./, '.').toLowerCase()
-        for (let k in fileTypeCatalog) {
-          if (fileTypeCatalog[k].canPreview && fileTypeCatalog[k].accept.includes(extension)) {
+        for (let k in this.FileTypeCatalog) {
+          if (this.FileTypeCatalog[k].canPreview && this.FileTypeCatalog[k].accept.includes(extension)) {
             window.open(source, '', this.subWindowFeatures)
             return
           }
@@ -469,30 +456,8 @@ export default {
         }, false)*/
         return
       }
-      warn('暂不支持预览该文件')
+      warning('暂不支持预览该文件')
     },
-    /*changeSwitch (isLink) {
-      if (isLink && this.files && this.files[0] && this.files[0].source) {
-        this.link = this.files[0].source
-      } else if (this.link) {
-        if (this.link.toLowerCase().endsWith('.mp4')) {
-          this.files[0] = {
-            source: this.link,
-            options: {
-              type: typeof this.Request === 'function' ? 'local' : 'limbo'
-            }
-          }
-        } else {
-          this.files.length = 0
-          warn('仅支持以.mp4结尾的视频链接')
-        }
-      } else {
-        this.files.length = 0
-      }
-    },
-    changeLink (source) {
-      this.$emit('change', source)
-    },*/
     watchProp (target, property, callback) {
       let temp = target[property]
 
@@ -511,15 +476,15 @@ export default {
     beforeRemoveFile (file) {
       if (this.DelConfirmation) {
         return new Promise((resolve, reject) => {
-          confirmation({
+          confirm({
             title: '删除文件',
             icon: 'warning',
           }).then(() => {
-            for (let k in fileTypeCatalog) {
-              if (fileTypeCatalog[k].curFile) {
-                const i = fileTypeCatalog[k].curFile.indexOf(file.id)
+            for (let k in this.FileTypeCatalog) {
+              if (this.FileTypeCatalog[k].curFile) {
+                const i = this.FileTypeCatalog[k].curFile.indexOf(file.id)
                 if (i !== -1) {
-                  fileTypeCatalog[k].curFile.splice(i, 1)
+                  this.FileTypeCatalog[k].curFile.splice(i, 1)
                   resolve(true)
                 }
               }
@@ -553,26 +518,17 @@ export default {
       let promise
       if (this.upload) {
         promise = this.upload(uploadParam)
-      } else if (upload) {
-        promise = upload(uploadParam)
-      }
-      // todo: deprecated
-      else if (this.Url && this.Request) {
-        promise = upload_preset({
-          url: this.Url,
-          request: this.Request,
-          param: this.Param,
-          requestConfig,
-          ...uploadParam
-        })
+      } else if (globalProps.upload) {
+        promise = globalProps.upload(uploadParam)
       }
 
       if (promise instanceof Promise) {
         this.progress = 0
         promise.then(fileUrl => {
-          this.addFile(valueHandler ? valueHandler(fileUrl) : fileUrl, 'local', curFileType)
+          this.addFile(fileUrl, 'local', curFileType)
         }).catch(e => {
-          err(typeof e === 'string' ? e : '上传失败')
+          console.log(e)
+          error(typeof e === 'string' ? e : '上传失败')
         }).finally(() => {
           this.progress = 1
         })
@@ -587,7 +543,7 @@ export default {
     addFile (file, type, curFileType) {
       this.$refs.filePond.addFile(file, { type }).then(file => {
         if (curFileType) {
-          const curFile = fileTypeCatalog[curFileType]
+          const curFile = this.FileTypeCatalog[curFileType]
           curFile.curFile = curFile.curFile ? [...curFile.curFile, file.id] : [file.id]
         }
       })
@@ -650,13 +606,13 @@ export default {
           return document.createElement('video').canPlayType(vidType + ';codecs="' + codType + '"')
         }*/
         if (this.accept && !this.accept.includes(extension)) {
-          warn(this.acceptText)
+          warning(this.acceptText)
           return false
         }
         if (curFileType) {
-          const curFile = fileTypeCatalog[curFileType]
+          const curFile = this.FileTypeCatalog[curFileType]
           if (curFile.count && curFile.curFile && curFile.curFile.length >= curFile.count) {
-            warn('该类型文件最多上传' + curFile.count + '个')
+            warning('该类型文件最多上传' + curFile.count + '个')
             return false
           }
         }
@@ -668,7 +624,7 @@ export default {
           } else {
             temp = (maxSize / MB).toFixed(2) + 'M'
           }
-          warn('不能超过' + temp)
+          warning('不能超过' + temp)
           return false
         }
 

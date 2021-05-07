@@ -8,12 +8,6 @@ export function upload_preset ({
   setProgress,
   jsonToFormData,
   fileType,
-
-  // todo: deprecated
-  url,
-  request,
-  param,
-  requestConfig,
 }) {
   const chunkSize = 10 * MB
 

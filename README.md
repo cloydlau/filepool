@@ -4,7 +4,7 @@
 
 <br/>
 
-### Features
+## Features
 
 - √ v-model双绑
 - √ 支持分片上传/断点续传
@@ -22,38 +22,61 @@ element-ui集成说明：
 
 <br/>
 
-### Installation
+## Installation
+
 ![NPM](https://nodei.co/npm/filepool.png)
-``` bash
-$ yarn add filepool
-```
 
 **Dependencies**：vue element-ui axios?
 
-```js
+```ts
+// 全局引入
+
 // sliceFile, MB, GB 仅作为工具函数、常量 可选
 import Filepool, { sliceFile, MB, GB } from 'filepool'
 
-// 组件内引入
-components: { Filepool }
+Vue.use(Filepool, {
+  // 全局配置
+})
+```
 
-// 全局引入
-Vue.use(Filepool)
+```vue
+<!-- 局部引入 -->
+
+<template>
+  <Filepool v-bind="config"/>
+</template>
+
+<script>
+// sliceFile, MB, GB 仅作为工具函数、常量 可选
+import Filepool, { sliceFile, MB, GB } from 'filepool'
+
+export default {
+  components: { Filepool },
+  data () {
+    return {
+      config: {
+        // 局部配置
+      }
+    }
+  }
+}
+</script>
 ```
 
 <br/>
 
-### Usage
+## Props
 
 ```html
+
 <Filepool v-model="" fileType="video"/>
 ```
 
 | Attribute | Description | Configuration Mode | Type | Accepted Values | Default |
 | --- | --- | --- | --- | --- | --- |
-| value / v-model | 文件链接 | props | string / array | | |
+| value / v-model | 文件 | props | string / array | | |
 | disabled | 是否禁用 | props | boolean | | false |
-| fileTypeCatalog | 文件目录 | global | object | | *see below* |
+| fileTypeCatalog | 文件类型目录 | global | object | | *see below* |
 | fileType | 指定使用fileTypeCatalog中的哪一个 | props | string, array | prop of fileTypeCatalog | |
 | valueType | 数据类型 | global, props | string | 'string' / 'array' | *see below* |
 | maxSize | 大小限制 单位MB | global, props | number | | 200 |
@@ -73,7 +96,7 @@ Vue.use(Filepool)
 
 <br/>
 
-**upload**
+### upload
 
 ```js
 import Filepool from 'filepool'
@@ -121,9 +144,9 @@ Vue.use(Filepool, {
    */
   upload ({
     file, // 用户选择的二进制文件
-    
+
     fileType, // 当前实例的文件类型
-    
+
     /**
      * json转FormData
      *
@@ -131,14 +154,14 @@ Vue.use(Filepool, {
      * @return {formData} formData格式的参数
      */
     jsonToFormData,
-    
+
     /**
      * 设置上传进度
      *
      * @param {number} progress - 进度 范围[0, 1]
      */
     setProgress,
-    
+
     /**
      * 切割文件（分片上传时有用）
      *
@@ -147,17 +170,16 @@ Vue.use(Filepool, {
      * @return {array} 文件分片
      */
     sliceFile,
-    
+
     MB, GB, // 文件容量单位 方便用于chunkSize参数
   }) {
     const chunkSize = 10 * MB
 
-    setProgress(0)
     failTimes = 0
     cancelUpload = null
 
     let chunks = sliceFile(file, chunkSize), count = 0
-    
+
     const formData = jsonToFormData({
       domainId: 4,
       dir: fileType,
@@ -221,16 +243,16 @@ Vue.use(Filepool, {
 
 <br/>
 
-**文件形态**
+## 文件形态
 
 - 服务器模式：配置了upload时进入该模式
 - 离线模式：没有配置upload时进入该模式
-  - 二进制File：默认
-  - base64: base64Encoding设置为true时进入该模式
+    - 二进制File：默认
+    - base64: base64Encoding设置为true时进入该模式
 
 <br/>
 
-**文件数据类型**
+## 文件数据类型
 
 - auto（默认）: count为1时采用string，count>1时采用array
 - string: 字符串类型，count为1时采用string，count＞1时采用json-string
@@ -238,7 +260,7 @@ Vue.use(Filepool, {
 
 <br/>
 
-**文件目录**
+## 文件目录
 
 > 你可以全局定义一个文件目录 预设一些你可能用到的文件类型（任何类型都可以） 并规定这些类型的格式和大小 在组件中使用fileType属性来对应
 
@@ -272,6 +294,7 @@ fileTypeCatalog: {
 例子
 
 ```vue
+
 <template>
   <Filepool fileType="abc"/>
 </template>
@@ -299,7 +322,7 @@ Vue.use(Filepool, {
 
 <br/>
 
-### Notice
+## Notice
 
 - 全局配置被props中的同名参数覆盖 对象会进行混入
 
@@ -308,5 +331,11 @@ Vue.use(Filepool, {
 - 如果仅上传图片 请使用imgpond（附带图片编辑功能）
 
 - fileType如果为array类型 必须以引用data中变量的形式来传入
-  - 这是因为每次父组件重渲染时 直接写在template中的引用型变量会被重新创建 导致意外触发组件内的监听
-  - 详见 https://github.com/vuejs/vue/issues/9223
+    - 这是因为每次父组件重渲染时 直接写在template中的引用型变量会被重新创建 导致意外触发组件内的监听
+    - 详见 https://github.com/vuejs/vue/issues/9223
+
+- 不限制上传文件数量 count可以传 `Number.MAX_SAFE_INTEGER`
+
+## TodoList
+
+- 多选时文件类型校验失败

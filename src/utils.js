@@ -12,9 +12,18 @@ export function getOrigin (url) {
 }
 
 export function headersToString (headers) {
-  return Object.keys(headers)
-  .map(h => `${h}: ${headers[h]}`)
-  .join('\r\n')
+  // 兼容fetch
+  if (headers instanceof Headers) {
+    let arr = []
+    for (let [key, value] of headers.entries()) {
+      arr.push(`${key}: ${value}`)
+    }
+    return arr.join('\r\n')
+  } else {
+    return Object.keys(headers)
+    .map(h => `${h}: ${headers[h]}`)
+    .join('\r\n')
+  }
 }
 
 export function isArrayJSON (str) {
@@ -40,7 +49,9 @@ export function isArrayJSON (str) {
  * @return {any} 最终
  */
 export function getFinalProp (globalProp, prop, defaultValue) {
-  return prop !== undefined ? prop :
+  return prop !== undefined ?
+    typeof defaultValue === 'boolean' ? ['', true].includes(prop) :
+      prop :
     globalProp !== undefined ? globalProp :
       defaultValue
 }

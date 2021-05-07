@@ -9,26 +9,30 @@ import axios from 'axios'
 const request = axios.create()
 request.interceptors.response.use(response => response.config.method.toUpperCase() === 'HEAD' ? response : response.data)
 
-import Filepool from '../src/main.js'
+import Filepool from '../src/main'
 Vue.use(Filepool, {
   valueType: undefined,
   maxSize: 200,
   count: 3,
   fileTypeCatalog: {
     abc: {
-      maxSize: 2.01
+      maxSize: 2.01,
+      accept: '.docx'
     }
   },
   upload ({ file, jsonToFormData, }) {
     return new Promise((resolve, reject) => {
       request({
-        url: '',
+        url: import.meta.env.VITE_APP_UPLOAD_API,
         method: 'POST',
         data: jsonToFormData({
           file,
-          domainId: 4,
-          dir: 'video'
+          domainId: 0,
+          dir: 'tmp'
         }),
+        headers: {
+          'Authorization': import.meta.env.VITE_APP_UPLOAD_API_TOKEN
+        }
       }).then(res => {
         if (typeof res?.data === 'string') {
           resolve(res.data)

@@ -20,7 +20,6 @@ Filepool.install = install
 export default Filepool
 
 export {
-  Filepool, // todo: deprecated
   sliceFile,
   MB, GB,
 }
