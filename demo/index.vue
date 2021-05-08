@@ -7,14 +7,16 @@
       v-bind="props"
       ref="filepool"
     />
-    <h3>value</h3>
+    <p>value</p>
     <json-editor-vue :value="value"/>
-    <h3>files</h3>
+    <p>files</p>
     <json-editor-vue :value="$refs.filepool.files" v-if="$refs.filepool" readonly/>
 
 
-    <el-form>
-      <h2>props</h2>
+    <el-form
+      label-position="top"
+    >
+      <h3>Props</h3>
       <el-form-item label="fileType">
         <el-radio v-model="props.fileType" label="video">视频</el-radio>
         <el-radio v-model="props.fileType" label="audio">音频</el-radio>
