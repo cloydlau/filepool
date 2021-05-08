@@ -5,14 +5,14 @@
     </div>
     <template v-else>
       <!--<el-switch
-              v-if="fileType==='video'&&percentage===100"
-              style="margin-top:6px;margin-bottom:10px;"
-              v-model="isLink"
-              active-color="#a1c4fd"
-              inactive-color="#c2e9fb"
-              active-text="输入链接"
-              inactive-text="本地上传"
-              @change="changeSwitch">
+            v-if="fileType==='video'&&percentage===100"
+            style="margin-top:6px;margin-bottom:10px;"
+            v-model="isLink"
+            active-color="#a1c4fd"
+            inactive-color="#c2e9fb"
+            active-text="输入链接"
+            inactive-text="本地上传"
+            @change="changeSwitch">
       </el-switch>
       <el-input v-if="isLink" v-model="link" maxlength="500" show-word-limit @change="changeLink"
                 placeholder="仅支持以.mp4结尾的视频链接"/>-->
@@ -49,7 +49,7 @@
         :server="server"
         :files="files"
         :max-files="Count||null"
-        @init="handleFilePondInit"
+        @init="onInit"
         :beforeAddFile="beforeAddFile"
         @activatefile="onActivateFile"
         :disabled="Disabled"
@@ -58,6 +58,8 @@
         :onwarning="onWarning"
         :allowReorder="true"
         @reorderfiles="emitChange"
+        @updatefiles="onUpdateFiles"
+        v-bind="FilePondProps"
       />
     </template>
   </div>
@@ -66,30 +68,26 @@
 <script>
 import vueFilePond from 'vue-filepond'
 import 'filepond/dist/filepond.min.css'
-
 import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.min.css'
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
-
 import FilePondPluginMediaPreview from 'filepond-plugin-media-preview'
-
 //import FilepondPluginDragReorder from 'filepond-plugin-drag-reorder'
-
 const FilePond = vueFilePond(
   FilePondPluginMediaPreview,
   FilePondPluginImagePreview,
   //FilepondPluginDragReorder,
 )
+
 import globalProps from './config'
-import { MB, GB, getOrigin, headersToString, isArrayJSON, getFinalProp, sliceFile } from './utils'
+import { MB, GB, headersToString, isArrayJSON, getFinalProp, sliceFile } from './utils'
+import { isEmpty, typeOf, jsonToFormData } from 'kayran'
+import { onAbort_preset } from './server'
+import { name } from '../package.json'
+
 import 'kikimore/dist/style.css'
 import { Swal } from 'kikimore'
-import { isEmpty, typeOf, jsonToFormData } from 'kayran'
-import { upload_preset, onAbort_preset } from './server'
-import { name } from '../package.json'
 const { warning, confirm, error } = Swal
-import axios from 'axios'
-const request = axios.create()
-request.interceptors.response.use(response => response.config.method.toUpperCase() === 'HEAD' ? response : response.data)
+
 export default {
   name: 'Filepool',
   inject: {
@@ -108,7 +106,7 @@ export default {
       }
     },
     onAbort: Function,
-    delConfirmation: {
+    deleteConfirmation: {
       validator: value => ['boolean'].includes(typeOf(value)),
     },
     placeholder: String,
@@ -145,8 +143,17 @@ export default {
       }
     },
     base64Encoding: {},
+    filePondProps: {
+      type: Object
+    }
   },
   computed: {
+    FilePondProps () {
+      return {
+        ...globalProps.filePondProps,
+        ...this.filePondProps
+      }
+    },
     FileTypeCatalog () {
       return {
         ...globalProps.fileTypeCatalog,
@@ -188,11 +195,11 @@ export default {
     Placeholder () {
       return getFinalProp(globalProps.placeholder, this.placeholder, '点击上传' + (this.acceptText ? `（${this.acceptText}）` : ''))
     },
-    DelConfirmation () {
-      return getFinalProp(globalProps.delConfirmation, this.delConfirmation)
+    DeleteConfirmation () {
+      return getFinalProp(globalProps.deleteConfirmation, this.deleteConfirmation)
     },
     Disabled () {
-      return this.disabled || this.elForm?.disabled
+      return getFinalProp(globalProps.disabled, this.disabled, Boolean(this.elForm?.disabled))
     },
     accept () {
       if (this.fileType) {
@@ -209,7 +216,7 @@ export default {
     },
     acceptText () {
       if (this.accept) {
-        return '支持格式：' + this.accept.replace(/\./g, ' ').trim()
+        return '文件格式：' + this.accept.replace(/\./g, ' ').trim()
       }
     },
     Count () {
@@ -314,10 +321,6 @@ export default {
       progress: 1
     }
   },
-  model: {
-    prop: 'value',
-    event: 'change'
-  },
   watch: {
     value: {
       immediate: true,
@@ -371,7 +374,7 @@ export default {
         this.handleUpdateFilesListener()
       }
     },
-    Disabled (newVal) {
+    Disabled (n) {
       this.handleUpdateFilesListener()
     },
   },
@@ -384,7 +387,7 @@ export default {
   },
   methods: {
     handleUpdateFilesListener () {
-      if (!this.Disabled) {
+      /*if (!this.Disabled) {
         this.$nextTick(() => {
           if (this.fileForm === 'binary') {
             this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
@@ -392,7 +395,7 @@ export default {
             this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
           }
         })
-      }
+      }*/
     },
     getSubWindowFeatures () {
       const width = window.screen.availWidth / 2
@@ -473,35 +476,6 @@ export default {
 
       target[property] = temp
     },
-    beforeRemoveFile (file) {
-      if (this.DelConfirmation) {
-        return new Promise((resolve, reject) => {
-          confirm({
-            title: '删除文件',
-            icon: 'warning',
-          }).then(() => {
-            for (let k in this.FileTypeCatalog) {
-              if (this.FileTypeCatalog[k].curFile) {
-                const i = this.FileTypeCatalog[k].curFile.indexOf(file.id)
-                if (i !== -1) {
-                  this.FileTypeCatalog[k].curFile.splice(i, 1)
-                  resolve(true)
-                }
-              }
-            }
-            // 删除前开启监听 否则无法清空
-            this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
-            resolve(true)
-          }).catch(() => {
-            resolve(false)
-          })
-        })
-      } else {
-        // 删除前开启监听 否则无法清空
-        this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
-        return true
-      }
-    },
     doUpload (param, curFileType) {
       const file = param.file
       const uploadParam = {
@@ -548,31 +522,6 @@ export default {
         }
       })
     },
-    onUpdateFiles (files) {
-      // beforeAddFile返回false仍然会触发onUpdateFiles
-      if (files && files[0]?.source instanceof File && this.fileForm !== 'binary') {
-        return false
-      }
-
-      const getValueLen = () => {
-        if (this.value) {
-          if (typeof this.value === 'string') {
-            const arr = isArrayJSON(this.value)
-            return arr ? arr.length : 1
-          }
-          return this.value.length
-        }
-        return 0
-      }
-
-      if (files.length !== getValueLen()) {
-        this.emitChange(files)
-      }
-
-      if (this.fileForm === 'binary') {
-        this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
-      }
-    },
     emitChange (files) {
       let tempList = files.map(v => this.fileForm === 'binary' ? v.file : v.source)
       if (this.ValueType === 'string') {
@@ -582,8 +531,8 @@ export default {
       else if (!this.ValueType && this.Count === 1) {
         tempList = this.fileForm === 'binary' ? tempList[0] : tempList.toString()
       }
-      // this.sychronizing = true
-      this.$emit('change', tempList)
+      //this.sychronizing = true
+      this.$emit('input', tempList)
       // fix: 用于el表单中 且校验触发方式为blur时 没有生效
       if (this.$parent?.$options?._componentTag === ('el-form-item') && this.$parent.rules?.trigger === 'blur') {
         // fix: el-form-item深层嵌套时事件触发早于updatefiles事件
@@ -592,13 +541,15 @@ export default {
         })
       }
     },
-    /*onActivatefile (file) {
-      this.preview.src = file.source
-      this.preview.show = true
-    },*/
-    handleFilePondInit () {
+
+    /**
+     * 生命周期
+     */
+    onInit () {
+      console.log('onInit')
     },
     beforeAddFile (item) {
+      console.log('beforeAddFile', item)
       const extension = item.file.name.replace(/.+\./, '.').toLowerCase()
       const curFileType = this.getCurFileType(extension)
       const validate = () => {
@@ -641,7 +592,7 @@ export default {
         const check = validate()
         if (check) {
           // 如果校验通过前就开启监听 会导致校验失败时仍触发onUpdateFiles
-          this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
+          //this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
         }
         return check
       } else {
@@ -662,6 +613,66 @@ export default {
           }*/
           return true
         }
+      }
+    },
+    onUpdateFiles (files) {
+      console.log('onUpdateFiles', files)
+      // beforeAddFile返回false仍然会触发onUpdateFiles
+      if (files?.[0]?.source instanceof File && this.fileForm !== 'binary') {
+        return false
+      }
+
+      const getValueLen = () => {
+        if (this.value) {
+          if (typeof this.value === 'string') {
+            const arr = isArrayJSON(this.value)
+            return arr ? arr.length : 1
+          }
+          return this.value.length
+        }
+        return 0
+      }
+
+      if (files.length !== getValueLen()) {
+        this.emitChange(files)
+      }
+
+      if (this.fileForm === 'binary') {
+        //this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
+      }
+    },
+    /*onActivatefile (file) {
+      this.preview.src = file.source
+      this.preview.show = true
+    },*/
+    beforeRemoveFile (item) {
+      console.log('beforeRemoveFile', item)
+      if (this.DeleteConfirmation) {
+        return new Promise((resolve, reject) => {
+          confirm({
+            title: '删除文件',
+            icon: 'warning',
+          }).then(() => {
+            for (let k in this.FileTypeCatalog) {
+              if (this.FileTypeCatalog[k].curFile) {
+                const i = this.FileTypeCatalog[k].curFile.indexOf(item.id)
+                if (i !== -1) {
+                  this.FileTypeCatalog[k].curFile.splice(i, 1)
+                  resolve(true)
+                }
+              }
+            }
+            // 删除前开启监听 否则无法清空
+            //this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
+            resolve(true)
+          }).catch(() => {
+            resolve(false)
+          })
+        })
+      } else {
+        // 删除前开启监听 否则无法清空
+        //this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
+        return true
       }
     },
   }

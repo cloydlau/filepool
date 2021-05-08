@@ -5,7 +5,12 @@
     <Filepool
       v-model="value"
       v-bind="props"
+      ref="filepool"
     />
+    <h3>value</h3>
+    <json-editor-vue :value="value"/>
+    <h3>files</h3>
+    <json-editor-vue :value="$refs.filepool.files" v-if="$refs.filepool" readonly/>
 
 
     <el-form>
@@ -49,7 +54,8 @@
 </template>
 
 <script>
-import { JsonEditorVue } from 'json-editor-vue'
+import 'json-editor-vue/dist/style.css'
+import JsonEditorVue from 'json-editor-vue'
 
 export default {
   components: { JsonEditorVue },
