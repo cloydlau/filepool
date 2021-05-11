@@ -49,7 +49,6 @@
         :server="server"
         :files="files"
         :max-files="Count||null"
-        @init="onInit"
         :beforeAddFile="beforeAddFile"
         @activatefile="onActivateFile"
         :disabled="Disabled"
@@ -79,7 +78,7 @@ const FilePond = vueFilePond(
 )
 
 import globalProps from './config'
-import { MB, GB, headersToString, isArrayJSON, getFinalProp, sliceFile } from './utils'
+import { MB, GB, headersToString, isArrayJSON, getFinalProp, sliceFile, getExtension } from './utils'
 import { isEmpty, typeOf, jsonToFormData } from 'kayran'
 import { onAbort_preset } from './server'
 import { name } from '../package.json'
@@ -92,7 +91,7 @@ export default {
   name: 'Filepool',
   inject: {
     elForm: {
-      default: ''
+      default: {}
     },
   },
   props: {
@@ -107,7 +106,7 @@ export default {
     },
     onAbort: Function,
     deleteConfirmation: {
-      validator: value => ['boolean'].includes(typeOf(value)),
+      validator: value => value === '' || ['boolean'].includes(typeOf(value)),
     },
     placeholder: String,
     value: {
@@ -128,7 +127,9 @@ export default {
         return true
       }
     },
-    disabled: Boolean,
+    disabled: {
+      validator: value => value === '' || ['boolean'].includes(typeOf(value)),
+    },
     valueType: String,
     maxSize: {
       validator: value => {
@@ -142,50 +143,43 @@ export default {
         return true
       }
     },
-    base64Encoding: {},
     filePondProps: {
       type: Object
     }
   },
   computed: {
     FilePondProps () {
-      return {
-        ...globalProps.filePondProps,
-        ...this.filePondProps
-      }
+      return getFinalProp(this.filePondProps, globalProps.filePondProps)
     },
     FileTypeCatalog () {
-      return {
-        ...globalProps.fileTypeCatalog,
-        image: {
-          maxSize: 10,
-          accept: '.jpg,.jpeg,.png',
-          ...globalProps.fileTypeCatalog?.image,
-          canPreview: true,
-        },
-        video: {
-          maxSize: 200,
-          accept: '.mp4',
-          ...globalProps.fileTypeCatalog?.video,
-          canPreview: true,
-        },
-        audio: {
-          maxSize: 60,
-          accept: '.mp3',
-          ...globalProps.fileTypeCatalog?.audio,
-          canPreview: true,
-        },
-        apk: {
-          maxSize: 200,
-          accept: '.apk',
-          ...globalProps.fileTypeCatalog?.apk,
-        },
-        excel: {
-          accept: '.xlsx,.xls',
-          maxSize: 100,
-          ...globalProps.fileTypeCatalog?.excel,
-        },
-      }
+      return getFinalProp(
+        globalProps.fileTypeCatalog,
+        {
+          image: {
+            maxSize: 10,
+            accept: '.jpg,.jpeg,.png',
+            __canPreview: true,
+          },
+          video: {
+            maxSize: 200,
+            accept: '.mp4',
+            __canPreview: true,
+          },
+          audio: {
+            maxSize: 60,
+            accept: '.mp3',
+            __canPreview: true,
+          },
+          apk: {
+            maxSize: 200,
+            accept: '.apk',
+          },
+          excel: {
+            accept: '.xlsx,.xls',
+            maxSize: 100,
+          },
+        }
+      )
     },
     percentage () {
       const result = Math.round(this.progress * 100)
@@ -193,13 +187,24 @@ export default {
       return result > 100 ? 100 : result
     },
     Placeholder () {
-      return getFinalProp(globalProps.placeholder, this.placeholder, '点击上传' + (this.acceptText ? `（${this.acceptText}）` : ''))
+      return getFinalProp(
+        this.placeholder,
+        globalProps.placeholder,
+        '点击上传' + (this.acceptText ? `（${this.acceptText}）` : '')
+      )
     },
     DeleteConfirmation () {
-      return getFinalProp(globalProps.deleteConfirmation, this.deleteConfirmation)
+      return getFinalProp(
+        this.deleteConfirmation,
+        globalProps.deleteConfirmation,
+      )
     },
     Disabled () {
-      return getFinalProp(globalProps.disabled, this.disabled, Boolean(this.elForm?.disabled))
+      return getFinalProp(
+        this.disabled,
+        globalProps.disabled,
+        Boolean(this.elForm.disabled)
+      )
     },
     accept () {
       if (this.fileType) {
@@ -220,23 +225,19 @@ export default {
       }
     },
     Count () {
-      return getFinalProp(globalProps.count, this.count, 1)
+      return getFinalProp(this.count, globalProps.count, 1)
     },
     ValueType () {
-      const result = getFinalProp(globalProps.valueType, this.valueType)?.toLowerCase()
+      const result = getFinalProp(this.valueType, globalProps.valueType,)?.toLowerCase()
       if (result === 'string' && this.fileForm === 'binary') {
         throw new Error(`[${name}] 文件形态为二进制时，文件的数据类型(valueType参数)不能配置为\'string\'`)
       }
       return result
     },
-    Base64Encoding () {
-      return getFinalProp(globalProps.base64Encoding, this.base64Encoding, false)
-    },
+    // value可能混杂不同的fileForm 因为会有初始值
     fileForm () {
-      if (getFinalProp(globalProps.upload, this.upload) || (this.Url && this.Request)) {
+      if (getFinalProp(this.upload, globalProps.upload)) {
         return 'url'
-      } else if (this.Base64Encoding) {
-        return 'base64'
       } else {
         return 'binary'
       }
@@ -245,6 +246,7 @@ export default {
       // >filepond@4.17.1的版本 && fileForm === 'binary' && 清空文件再上传 满足这三个条件会导致报错
       return this.fileForm === 'binary' ? undefined : {
         load: (source, load, error, progress, abort, headers) => {
+          console.log('server', arguments)
           // 回显文件大小
           if (this.fileForm === 'url') {
             /*if (!isEmpty(proxy) || !isEmpty(localProxy)) {
@@ -317,45 +319,16 @@ export default {
       filename: '',
       subWindowFeatures: '',
       addingFile: false,
-      files: [],
-      progress: 1
+      files: undefined,
+      progress: 1,
+      unwatchValue: null,
     }
   },
   watch: {
-    value: {
-      immediate: true,
-      handler (newVal, oldVal) {
-        /*if (this.sychronizing) {
-          this.sychronizing = false
-          return
-        }*/
-        if (newVal) {
-          if (typeof newVal === 'string') {
-            const arr = isArrayJSON(newVal)
-            newVal = arr ? arr : [newVal]
-          } else if (newVal instanceof File) {
-            newVal = [newVal]
-          }
-          if (newVal.length > 0 && newVal.length !== this.files.length) {
-            this.files = newVal.map(v => {
-              return {
-                ...typeof v === 'string' && { source: v },
-                options: {
-                  type: 'local', // local调用load方法 limbo调用restore方法
-                  ...v instanceof File && { file: v }
-                }
-              }
-            })
-          }
-        } else {
-          this.files = []
-        }
-      }
-    },
-    //更换fileType时，清空value
     fileType: {
       immediate: true,
       handler (n, o) {
+        // 参数校验
         if (n) {
           for (let v of (Array.isArray(n) ? n : [n])) {
             if (!(v in this.FileTypeCatalog)) {
@@ -363,12 +336,13 @@ export default {
             }
           }
         }
+        // 更换fileType时，清空value
         if (!isEmpty(o)) {
           this.onUpdateFiles([])
         }
       }
     },
-    fileForm: {
+    /*fileForm: {
       immediate: true,
       handler (newVal) {
         this.handleUpdateFilesListener()
@@ -376,7 +350,21 @@ export default {
     },
     Disabled (n) {
       this.handleUpdateFilesListener()
-    },
+    },*/
+  },
+  created () {
+    this.unwatchValue = this.$watch('value', (n, o) => {
+      if (n) {
+        this.setFiles(this.value)
+        // immediate时this.unwatchValue为空
+        if (this.unwatchValue) {
+          this.unwatchValue()
+          this.unwatchValue = null
+        }
+      }
+    }, {
+      immediate: true
+    })
   },
   mounted () {
     this.getSubWindowFeatures()
@@ -386,6 +374,31 @@ export default {
     window.removeEventListener('resize', this.getSubWindowFeatures)
   },
   methods: {
+    setFiles (value) {
+      let files = []
+      if (value) {
+        const type = typeOf(value)
+        if (type === 'string') {
+          const arr = isArrayJSON(value)
+          files = arr ? arr : [value]
+        } else if (type === 'file') {
+          files = [value]
+        }
+      }
+
+      this.files = files.map(v => {
+        const type = typeOf(v)
+        return {
+          ...type === 'string' && { source: v },
+          options: {
+            // https://pqina.nl/filepond/docs/patterns/api/filepond-object/#setting-initial-files
+            // local调用load方法 limbo调用restore方法
+            //type: 'local',
+            ...type === 'file' && { file: v }
+          }
+        }
+      })
+    },
     handleUpdateFilesListener () {
       /*if (!this.Disabled) {
         this.$nextTick(() => {
@@ -409,32 +422,27 @@ export default {
     },
     OnAbort () {
       this.progress = 1
-      getFinalProp(globalProps.onAbort, this.onAbort, onAbort_preset)()
+      getFinalProp(this.onAbort, globalProps.onAbort, onAbort_preset)()
     },
-    getMaxSize (extension) {
-      if (this.maxSize) {
-        return this.maxSize
-      } else if (this.fileType) {
-        if (this.fileType instanceof Array) {
-          for (let v of this.fileType) {
-            if (this.FileTypeCatalog[v].accept?.includes(extension)) {
-              return this.FileTypeCatalog[v].maxSize
-            }
-          }
-        }
-        return this.FileTypeCatalog[this.fileType].maxSize
-      }
-      return globalProps.maxSize || 200
+    getMaxSize (fileType) {
+      return getFinalProp(
+        this.maxSize,
+        this.FileTypeCatalog[fileType]?.maxSize,
+        globalProps.maxSize,
+        200
+      )
     },
     onWarning () {
       warning('超过数量上限，最多上传' + this.Count + '个')
     },
-    getCurFileType (extension) {
+    extensionToFileType (extension) {
+      // 兼容完整文件名
+      extension = getExtension(extension)
       if (this.fileType) {
         // 允许多种文件类型时 需要遍历才能知道当前用户选择的文件属于哪种
         if (this.fileType instanceof Array) {
           for (let v of this.fileType) {
-            if (this.FileTypeCatalog[v].accept?.includes(extension)) {
+            if (new RegExp(`\\b${extension}\\b`).test(this.FileTypeCatalog[v].accept)) {
               return v
             }
           }
@@ -444,39 +452,30 @@ export default {
       }
     },
     view (source) {
-      if (this.fileForm === 'url') {
-        const extension = source.replace(/.+\./, '.').toLowerCase()
+      // 不能用fileForm来判断
+      if (typeof (source) === 'string') {
+        window.open(source, '', this.subWindowFeatures)
+
+        /*const extension = source.replace(/.+\./, '.').toLowerCase()
         for (let k in this.FileTypeCatalog) {
-          if (this.FileTypeCatalog[k].canPreview && this.FileTypeCatalog[k].accept.includes(extension)) {
+          if (
+            this.FileTypeCatalog[k].__canPreview &&
+            this.FileTypeCatalog[k].accept.includes(extension)
+          ) {
             window.open(source, '', this.subWindowFeatures)
             return
           }
         }
-        const subWindow = window.open(source, '', this.subWindowFeatures)
+        const subWindow = window.open(source, '', this.subWindowFeatures)*/
         // 仅下载 需要关闭
         /*subWindow.addEventListener('load', () => {
           subWindow.close()
         }, false)*/
-        return
+      } else {
+        warning('不支持预览二进制文件')
       }
-      warning('暂不支持预览该文件')
     },
-    watchProp (target, property, callback) {
-      let temp = target[property]
-
-      Object.defineProperty(target, property, {
-        get () {
-          return temp
-        },
-        set (newVal) {
-          temp = newVal
-          callback && callback(newVal)
-        },
-      })
-
-      target[property] = temp
-    },
-    doUpload (param, curFileType) {
+    doUpload (param, fileType) {
       const file = param.file
       const uploadParam = {
         file,
@@ -497,42 +496,51 @@ export default {
       }
 
       if (promise instanceof Promise) {
-        this.progress = 0
-        promise.then(fileUrl => {
-          this.addFile(fileUrl, 'local', curFileType)
-        }).catch(e => {
-          console.log(e)
+        //this.progress = 0
+        promise
+        .then(fileUrl => {
+          this.addFile(fileUrl, fileType)
+        })
+        .catch(e => {
+          console.error(e)
           error(typeof e === 'string' ? e : '上传失败')
-        }).finally(() => {
-          this.progress = 1
+        })
+        .finally(() => {
+          //this.progress = 1
         })
       } else {
-        let reader = new FileReader()
-        reader.readAsDataURL(file)
-        reader.onload = (e) => {
-          this.addFile(e.target.result, 'local', curFileType)
-        }
+        this.addFile(file, fileType)
       }
     },
-    addFile (file, type, curFileType) {
-      this.$refs.filePond.addFile(file, { type }).then(file => {
-        if (curFileType) {
-          const curFile = this.FileTypeCatalog[curFileType]
-          curFile.curFile = curFile.curFile ? [...curFile.curFile, file.id] : [file.id]
-        }
+    addFile (file, fileType) {
+      // file可以是string或array
+      this.$refs.filePond.addFiles(file)
+      .then(items => {
+
+      })
+      .catch(e => {
+        console.error(e)
       })
     },
     emitChange (files) {
-      let tempList = files.map(v => this.fileForm === 'binary' ? v.file : v.source)
+      // value的同步意味着着files等待初始化的结束
+      if (this.unwatchValue) {
+        this.unwatchValue()
+        this.unwatchValue = null
+      }
+
+      let value = files.map(v => this.fileForm === 'binary' ? v.file : v.source)
       if (this.ValueType === 'string') {
-        tempList = this.Count === 1 ? tempList.toString() : JSON.stringify(tempList)
+        value = this.Count === 1 ? value.toString() : JSON.stringify(value)
       }
       //auto模式
       else if (!this.ValueType && this.Count === 1) {
-        tempList = this.fileForm === 'binary' ? tempList[0] : tempList.toString()
+        value = this.fileForm === 'binary' ? value[0] : value.toString()
       }
-      //this.sychronizing = true
-      this.$emit('input', tempList)
+      this.$emit('input', value)
+      this.triggerElFormBlurring()
+    },
+    triggerElFormBlurring () {
       // fix: 用于el表单中 且校验触发方式为blur时 没有生效
       if (this.$parent?.$options?._componentTag === ('el-form-item') && this.$parent.rules?.trigger === 'blur') {
         // fix: el-form-item深层嵌套时事件触发早于updatefiles事件
@@ -541,34 +549,26 @@ export default {
         })
       }
     },
-
-    /**
-     * 生命周期
-     */
-    onInit () {
-      console.log('onInit')
-    },
-    beforeAddFile (item) {
-      console.log('beforeAddFile', item)
-      const extension = item.file.name.replace(/.+\./, '.').toLowerCase()
-      const curFileType = this.getCurFileType(extension)
-      const validate = () => {
-        /*function supportType(vidType, codType) {
-          return document.createElement('video').canPlayType(vidType + ';codecs="' + codType + '"')
-        }*/
-        if (this.accept && !this.accept.includes(extension)) {
-          warning(this.acceptText)
+    validate ({ size, fileType, extension }) {
+      /*function supportType(vidType, codType) {
+        return document.createElement('video').canPlayType(vidType + ';codecs="' + codType + '"')
+      }*/
+      if (
+        this.accept &&
+        !new RegExp(`\\b${extension}\\b`).test(this.accept)
+      ) {
+        warning(this.acceptText)
+        return false
+      }
+      if (fileType) {
+        const curFileType = this.FileTypeCatalog[fileType]
+        if (curFileType.count && curFileType.__fileIdList && curFileType.__fileIdList.length >= curFileType.count) {
+          warning('该类型文件最多上传' + curFileType.count + '个')
           return false
         }
-        if (curFileType) {
-          const curFile = this.FileTypeCatalog[curFileType]
-          if (curFile.count && curFile.curFile && curFile.curFile.length >= curFile.count) {
-            warning('该类型文件最多上传' + curFile.count + '个')
-            return false
-          }
-        }
-        const maxSize = this.getMaxSize(extension) * MB
-        if (item.file.size > maxSize) {
+
+        const maxSize = this.getMaxSize(fileType) * MB
+        if (size > maxSize) {
           let temp = ''
           if (maxSize >= GB) {
             temp = (maxSize / GB).toFixed(2) + 'G'
@@ -578,51 +578,67 @@ export default {
           warning('不能超过' + temp)
           return false
         }
-
-        return true
       }
 
-      /**
-       * 不同文件类型触发流程：
-       *   url:    File → plainObject
-       *   base64: File → Blob
-       *   File:   File
-       */
-      if (this.fileForm === 'binary') {
-        const check = validate()
-        if (check) {
-          // 如果校验通过前就开启监听 会导致校验失败时仍触发onUpdateFiles
-          //this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
-        }
-        return check
-      } else {
-        if (typeOf(item.file) === 'file') {
-          if (validate()) {
-            // 记录转换为base64之前的文件名（转换后丢失）
-            /*if (this.Base64Encoding) {
-              this.filename = item.file.name
-            }*/
-            this.doUpload({ file: item.file }, curFileType)
-          }
-          return false
-        } else {
-          // 重置为正确的文件名
-          /*if (this.filename && typeOf(item.file) === 'blob') {
-            item.file.name = this.filename
-            this.filename = ''
-          }*/
-          return true
+      return true
+    },
+    removeFile (id) {
+      for (let k in this.FileTypeCatalog) {
+        if (this.FileTypeCatalog[k].__fileIdList?.has(id)) {
+          this.FileTypeCatalog[k].__fileIdList.delete(id)
+          return
         }
       }
     },
-    onUpdateFiles (files) {
-      console.log('onUpdateFiles', files)
-      // beforeAddFile返回false仍然会触发onUpdateFiles
-      if (files?.[0]?.source instanceof File && this.fileForm !== 'binary') {
-        return false
-      }
 
-      const getValueLen = () => {
+    /**
+     * 生命周期
+     */
+    /*onInit () {
+      console.log('onInit')
+    },*/
+    beforeAddFile (item) {
+      console.log('beforeAddFile', item)
+
+      // 不校验初始值
+      if (item.source instanceof File) {
+        const extension = getExtension(item.source.name)
+        const fileType = this.extensionToFileType(extension)
+        const isValid = this.validate(({
+          size: item.file.size, fileType, extension
+        }))
+        console.log('校验结果：', isValid)
+        if (isValid) {
+          this.doUpload({ file: item.file }, fileType)
+        }
+        return false
+      } else {
+        return true
+      }
+    },
+    onUpdateFiles (items) {
+      console.log('onUpdateFiles', items)
+
+      // 记录每种类型的上传数量
+      items.map(({ file, id }) => {
+        const extension = file.name.replace(/.+\./, '.').toLowerCase()
+        const fileType = this.extensionToFileType(extension)
+        if (fileType) {
+          const curFileType = this.FileTypeCatalog[fileType]
+          if (curFileType.__fileIdList) {
+            curFileType.__fileIdList.add(id)
+          } else {
+            curFileType.__fileIdList = new Set([id])
+          }
+        }
+      })
+
+      // beforeAddFile返回false仍然会触发onUpdateFiles
+      /*if (items?.[0]?.source instanceof File && this.fileForm !== 'binary') {
+        return false
+      }*/
+
+      /*const getValueLen = () => {
         if (this.value) {
           if (typeof this.value === 'string') {
             const arr = isArrayJSON(this.value)
@@ -633,13 +649,13 @@ export default {
         return 0
       }
 
-      if (files.length !== getValueLen()) {
-        this.emitChange(files)
-      }
+      if (items.length !== getValueLen()) {
+        this.emitChange(items)
+      }*/
 
-      if (this.fileForm === 'binary') {
-        //this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
-      }
+      /*if (this.fileForm === 'binary') {
+        this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
+      }*/
     },
     /*onActivatefile (file) {
       this.preview.src = file.source
@@ -653,15 +669,7 @@ export default {
             title: '删除文件',
             icon: 'warning',
           }).then(() => {
-            for (let k in this.FileTypeCatalog) {
-              if (this.FileTypeCatalog[k].curFile) {
-                const i = this.FileTypeCatalog[k].curFile.indexOf(item.id)
-                if (i !== -1) {
-                  this.FileTypeCatalog[k].curFile.splice(i, 1)
-                  resolve(true)
-                }
-              }
-            }
+            this.removeFile(item.id)
             // 删除前开启监听 否则无法清空
             //this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
             resolve(true)
@@ -670,6 +678,7 @@ export default {
           })
         })
       } else {
+        this.removeFile(item.id)
         // 删除前开启监听 否则无法清空
         //this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
         return true

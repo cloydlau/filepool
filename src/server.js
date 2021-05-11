@@ -74,6 +74,6 @@ export function upload_preset ({
 }
 
 export function onAbort_preset () {
-  failTimes = Number.MAX_VALUE
+  failTimes = Number.MAX_SAFE_INTEGER
   cancelUpload?.()
 }

@@ -4,48 +4,37 @@
 
     <Filepool
       v-model="value"
-      v-bind="props"
+      v-bind="config"
       ref="filepool"
     />
     <p>value</p>
-    <json-editor-vue :value="value"/>
-    <p>files</p>
-    <json-editor-vue :value="$refs.filepool.files" v-if="$refs.filepool" readonly/>
-
+    <json-editor-vue :value="value__" readonly/>
 
     <el-form
       label-position="top"
     >
       <h3>Props</h3>
       <el-form-item label="fileType">
-        <el-radio v-model="props.fileType" label="video">视频</el-radio>
-        <el-radio v-model="props.fileType" label="audio">音频</el-radio>
+        <el-radio v-model="config.fileType" label="video">视频</el-radio>
+        <el-radio v-model="config.fileType" label="audio">音频</el-radio>
       </el-form-item>
       <el-form-item label="valueType">
-        <el-radio v-model="props.valueType" :label="undefined">自动</el-radio>
-        <el-radio v-model="props.valueType" label="string">string</el-radio>
-        <el-radio v-model="props.valueType" label="array">array</el-radio>
+        <el-radio v-model="config.valueType" :label="undefined">自动</el-radio>
+        <el-radio v-model="config.valueType" label="string">string</el-radio>
+        <el-radio v-model="config.valueType" label="array">array</el-radio>
       </el-form-item>
       <el-form-item label="maxSize">
-        <el-input-number v-model="props.maxSize" clearable :min="0"/>
+        <el-input-number v-model="config.maxSize" clearable :min="0"/>
       </el-form-item>
       <el-form-item label="count">
-        <el-input-number v-model="props.count" clearable :min="1"/>
+        <el-input-number v-model="config.count" clearable :min="1"/>
       </el-form-item>
       <el-form-item label="param">
-        <json-editor-vue v-model="props.param"/>
+        <json-editor-vue v-model="config.param"/>
       </el-form-item>
       <el-form-item label="disabled">
         <el-switch
-          v-model="props.disabled"
-          active-color="#13ce66"
-          :active-value="true"
-          :inactive-value="false"
-        />
-      </el-form-item>
-      <el-form-item label="base64Encoding">
-        <el-switch
-          v-model="props.base64Encoding"
+          v-model="config.disabled"
           active-color="#13ce66"
           :active-value="true"
           :inactive-value="false"
@@ -63,18 +52,27 @@ export default {
   components: { JsonEditorVue },
   data () {
     return {
-      value: '',
-      props: {
+      value: import.meta.env.VITE_APP_TEST_URL,
+      value__: null,
+      show: false,
+      config: {
         param: {},
         fileType: ['abc'],
         maxSize: undefined,
         count: undefined,
         valueType: undefined,
         disabled: false,
-        base64Encoding: false,
         upload: false,
       }
     }
+  },
+  watch: {
+    value: {
+      immediate: true,
+      handler (n, o) {
+        this.value__ = JSON.parse(JSON.stringify(n))
+      }
+    },
   },
   methods: {}
 }

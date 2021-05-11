@@ -18,6 +18,9 @@ Vue.use(Filepool, {
     abc: {
       maxSize: 2.01,
       accept: '.docx'
+    },
+    image: {
+      maxSize: 10000
     }
   },
   upload ({ file, jsonToFormData, }) {
