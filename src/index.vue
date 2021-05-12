@@ -46,7 +46,6 @@
         labelFileProcessingComplete="上传成功"
         labelTapToUndo="点击删除"
         allow-multiple="true"
-        :server="server"
         :files="files"
         :max-files="Count||null"
         :beforeAddFile="beforeAddFile"
@@ -86,6 +85,8 @@ import { name } from '../package.json'
 import 'kikimore/dist/style.css'
 import { Swal } from 'kikimore'
 const { warning, confirm, error } = Swal
+
+let progress = 1
 
 export default {
   name: 'Filepool',
@@ -182,15 +183,19 @@ export default {
       )
     },
     percentage () {
-      const result = Math.round(this.progress * 100)
+      const result = Math.round(progress * 100)
       // progressEvent.loaded 是可能大于 file.size 的
       return result > 100 ? 100 : result
     },
     Placeholder () {
+      let acceptText = ''
+      if (this.accept) {
+        acceptText = '（文件格式：' + this.accept.replace(/\./g, ' ').trim() + '）'
+      }
       return getFinalProp(
         this.placeholder,
         globalProps.placeholder,
-        '点击上传' + (this.acceptText ? `（${this.acceptText}）` : '')
+        '点击上传' + acceptText
       )
     },
     DeleteConfirmation () {
@@ -219,37 +224,28 @@ export default {
         return arr.join(',')
       }
     },
-    acceptText () {
-      if (this.accept) {
-        return '文件格式：' + this.accept.replace(/\./g, ' ').trim()
-      }
-    },
     Count () {
       return getFinalProp(this.count, globalProps.count, 1)
     },
     ValueType () {
       const result = getFinalProp(this.valueType, globalProps.valueType,)?.toLowerCase()
-      if (result === 'string' && this.fileForm === 'binary') {
+      if (result === 'string' && !this.Upload) {
         throw new Error(`[${name}] 文件形态为二进制时，文件的数据类型(valueType参数)不能配置为\'string\'`)
       }
       return result
     },
     // value可能混杂不同的fileForm 因为会有初始值
-    fileForm () {
-      if (getFinalProp(this.upload, globalProps.upload)) {
-        return 'url'
-      } else {
-        return 'binary'
-      }
-    },
-    server () {
+    /*fileForm () {
+      return this.Upload ? 'url' : 'binary'
+    },*/
+    /*server () {
       // >filepond@4.17.1的版本 && fileForm === 'binary' && 清空文件再上传 满足这三个条件会导致报错
-      return this.fileForm === 'binary' ? undefined : {
+      return this.Upload ? {
         load: (source, load, error, progress, abort, headers) => {
-          console.log('server', arguments)
+          console.log('load', arguments)
           // 回显文件大小
-          if (this.fileForm === 'url') {
-            /*if (!isEmpty(proxy) || !isEmpty(localProxy)) {
+          if (this.Upload) {
+            /!*if (!isEmpty(proxy) || !isEmpty(localProxy)) {
               let origin = ''
               try {
                 origin = getOrigin(source)
@@ -270,9 +266,9 @@ export default {
                   }
                 }
               }
-            }*/
+            }*!/
             // todo: 获取文件体积
-            /*fetch(source, {
+            /!*fetch(source, {
               mode: 'cors',
               method: 'HEAD'
             })
@@ -290,7 +286,7 @@ export default {
                 body: null
               })
               // 或者load(null)
-            })*/
+            })*!/
             load({
               body: null
             })
@@ -303,25 +299,21 @@ export default {
             }
           }
         },
-      }
+      } : undefined
+    },*/
+    Upload () {
+      return getFinalProp(this.upload, globalProps.upload)
     },
   },
   components: { FilePond },
   data () {
     return {
-      /*isLink: false,
-      link: '',
-      preview: {
-        show: false,
-        src: null
-      },*/
-      sychronizing: false,
-      filename: '',
       subWindowFeatures: '',
-      addingFile: false,
       files: undefined,
-      progress: 1,
       unwatchValue: null,
+      initializingFiles: false,
+      //progress: 1, // todo: 未知原因报错
+      queueIsDirty: false,
     }
   },
   watch: {
@@ -355,12 +347,13 @@ export default {
   created () {
     this.unwatchValue = this.$watch('value', (n, o) => {
       if (n) {
-        this.setFiles(this.value)
+        this.initializingFiles = true
         // immediate时this.unwatchValue为空
         if (this.unwatchValue) {
           this.unwatchValue()
           this.unwatchValue = null
         }
+        this.setFiles(this.value)
       }
     }, {
       immediate: true
@@ -421,7 +414,7 @@ export default {
       this.view(file.source)
     },
     OnAbort () {
-      this.progress = 1
+      progress = 1
       getFinalProp(this.onAbort, globalProps.onAbort, onAbort_preset)()
     },
     getMaxSize (fileType) {
@@ -454,7 +447,11 @@ export default {
     view (source) {
       // 不能用fileForm来判断
       if (typeof (source) === 'string') {
-        window.open(source, '', this.subWindowFeatures)
+        if (source) {
+          window.open(source, '', this.subWindowFeatures)
+        } else {
+          warning('文件链接为空')
+        }
 
         /*const extension = source.replace(/.+\./, '.').toLowerCase()
         for (let k in this.FileTypeCatalog) {
@@ -472,47 +469,41 @@ export default {
           subWindow.close()
         }, false)*/
       } else {
-        warning('不支持预览二进制文件')
+        warning('不支持预览的格式')
       }
     },
-    doUpload (param, fileType) {
+    doUpload (param) {
       const file = param.file
       const uploadParam = {
         file,
         MB,
         GB,
         sliceFile,
-        setProgress: progress => {
-          this.progress = progress
+        setProgress: e => {
+          progress = e
         },
         jsonToFormData,
         fileType: this.fileType
       }
-      let promise
-      if (this.upload) {
-        promise = this.upload(uploadParam)
-      } else if (globalProps.upload) {
-        promise = globalProps.upload(uploadParam)
-      }
-
+      const promise = this.Upload(uploadParam)
       if (promise instanceof Promise) {
-        //this.progress = 0
+        progress = 0
         promise
         .then(fileUrl => {
-          this.addFile(fileUrl, fileType)
+          this.addFile(fileUrl)
         })
         .catch(e => {
           console.error(e)
           error(typeof e === 'string' ? e : '上传失败')
         })
         .finally(() => {
-          //this.progress = 1
+          progress = 1
         })
-      } else {
-        this.addFile(file, fileType)
-      }
+      } /*else {
+        this.addFile(file)
+      }*/
     },
-    addFile (file, fileType) {
+    addFile (file) {
       // file可以是string或array
       this.$refs.filePond.addFiles(file)
       .then(items => {
@@ -527,18 +518,20 @@ export default {
       if (this.unwatchValue) {
         this.unwatchValue()
         this.unwatchValue = null
+      } else if (this.initializingFiles) {
+        this.initializingFiles = false
+      } else {
+        let value = files.map(v => this.Upload ? v.source : v.file)
+        if (this.ValueType === 'string') {
+          value = this.Count === 1 ? value.toString() : JSON.stringify(value)
+        }
+        //auto模式
+        else if (!this.ValueType && this.Count === 1) {
+          value = this.Upload ? value.toString() : value[0]
+        }
+        this.$emit('input', value)
+        this.triggerElFormBlurring()
       }
-
-      let value = files.map(v => this.fileForm === 'binary' ? v.file : v.source)
-      if (this.ValueType === 'string') {
-        value = this.Count === 1 ? value.toString() : JSON.stringify(value)
-      }
-      //auto模式
-      else if (!this.ValueType && this.Count === 1) {
-        value = this.fileForm === 'binary' ? value[0] : value.toString()
-      }
-      this.$emit('input', value)
-      this.triggerElFormBlurring()
     },
     triggerElFormBlurring () {
       // fix: 用于el表单中 且校验触发方式为blur时 没有生效
@@ -557,7 +550,7 @@ export default {
         this.accept &&
         !new RegExp(`\\b${extension}\\b`).test(this.accept)
       ) {
-        warning(this.acceptText)
+        warning(`不支持的格式：${extension}`)
         return false
       }
       if (fileType) {
@@ -597,41 +590,59 @@ export default {
     /*onInit () {
       console.log('onInit')
     },*/
+    // 同时上传多个文件时 触发顺序为：beforeAddFile1 beforeAddFile2 onUpdateFiles1 onUpdateFiles2
     beforeAddFile (item) {
       console.log('beforeAddFile', item)
 
-      // 不校验初始值
-      if (item.source instanceof File) {
-        const extension = getExtension(item.source.name)
+      const { file, source } = item
+      if (source instanceof File) {
+        const extension = getExtension(source.name)
         const fileType = this.extensionToFileType(extension)
         const isValid = this.validate(({
-          size: item.file.size, fileType, extension
+          size: file.size, fileType, extension
         }))
         console.log('校验结果：', isValid)
-        if (isValid) {
-          this.doUpload({ file: item.file }, fileType)
+
+        if (!isValid) {
+          this.queueIsDirty = true
         }
-        return false
-      } else {
+
+        if (this.Upload) {
+          if (isValid) {
+            this.doUpload({ file })
+          }
+          return false
+        } else {
+          return isValid
+        }
+      }
+      // 不校验初始值（初始值只能是url）
+      else {
         return true
       }
     },
     onUpdateFiles (items) {
-      console.log('onUpdateFiles', items)
-
-      // 记录每种类型的上传数量
-      items.map(({ file, id }) => {
-        const extension = file.name.replace(/.+\./, '.').toLowerCase()
-        const fileType = this.extensionToFileType(extension)
-        if (fileType) {
-          const curFileType = this.FileTypeCatalog[fileType]
-          if (curFileType.__fileIdList) {
-            curFileType.__fileIdList.add(id)
-          } else {
-            curFileType.__fileIdList = new Set([id])
+      if (this.queueIsDirty) {
+        console.log('onUpdateFiles（beforeAddFile返回false仍然触发）', items)
+        this.queueIsDirty = false
+      } else {
+        console.log('onUpdateFiles', items)
+        // 记录每种类型的上传数量
+        items.map(({ file, id }) => {
+          const extension = file.name.replace(/.+\./, '.').toLowerCase()
+          const fileType = this.extensionToFileType(extension)
+          if (fileType) {
+            const curFileType = this.FileTypeCatalog[fileType]
+            if (curFileType.__fileIdList) {
+              curFileType.__fileIdList.add(id)
+            } else {
+              curFileType.__fileIdList = new Set([id])
+            }
           }
-        }
-      })
+        })
+
+        this.emitChange(items)
+      }
 
       // beforeAddFile返回false仍然会触发onUpdateFiles
       /*if (items?.[0]?.source instanceof File && this.fileForm !== 'binary') {
