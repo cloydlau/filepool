@@ -59,7 +59,7 @@ export function getFinalProp () {
     const prop = args[i]
     if (prop !== undefined) {
       if (i === 0 && typeof (defaultValue) === 'boolean') {
-        result = ['', true].includes(prop)
+        result = ['', true].includes(prop) ? true : prop
       } else if (isPlainObject(prop)) {
         result = assignInWith(...args, (objValue, srcValue) => {
           return isPlainObject(srcValue) ? {
