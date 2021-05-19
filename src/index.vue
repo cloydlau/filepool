@@ -71,16 +71,17 @@ import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
 import FilePondPluginMediaPreview from 'filepond-plugin-media-preview'
 //import FilepondPluginDragReorder from 'filepond-plugin-drag-reorder'
 const FilePond = vueFilePond(
-  FilePondPluginMediaPreview,
-  FilePondPluginImagePreview,
+  //FilePondPluginMediaPreview,
+  //FilePondPluginImagePreview,
   //FilepondPluginDragReorder,
 )
 
 import globalProps from './config'
-import { MB, GB, headersToString, isArrayJSON, getFinalProp, sliceFile, getExtension } from './utils'
-import { isEmpty, typeOf, jsonToFormData } from 'kayran'
+import { MB, GB, headersToString, isArrayJSON, getFinalProp, sliceFile, getExtension, getMediaDuration } from './utils'
+import { isEmpty, typeOf, jsonToFormData, awaitFor } from 'kayran'
 import { onAbort_preset } from './server'
 import { name } from '../package.json'
+const prefix = `[${name}] `
 
 import 'kikimore/dist/style.css'
 import { Swal } from 'kikimore'
@@ -99,7 +100,7 @@ export default {
     upload: {
       validator: value => {
         if (!['boolean', 'function'].includes(typeOf(value)) || value === true) {
-          console.error(`[${name}] upload需为function类型 或传false以进入离线模式`)
+          console.error(`${prefix}upload需为function类型 或传false以进入离线模式`)
           return false
         }
         return true
@@ -135,10 +136,10 @@ export default {
     maxSize: {
       validator: value => {
         if (typeof value !== 'number') {
-          console.error(`[${name}] maxSize必须为Number类型`)
+          console.error(`${prefix}maxSize必须为Number类型`)
           return false
         } else if (value <= 0) {
-          console.error(`[${name}] maxSize必须大于0`)
+          console.error(`${prefix}maxSize必须大于0`)
           return false
         }
         return true
@@ -230,7 +231,7 @@ export default {
     ValueType () {
       const result = getFinalProp(this.valueType, globalProps.valueType,)?.toLowerCase()
       if (result === 'string' && !this.Upload) {
-        throw new Error(`[${name}] 文件形态为二进制时，文件的数据类型(valueType参数)不能配置为\'string\'`)
+        throw new Error(`${prefix}文件形态为二进制时，文件的数据类型(valueType参数)不能配置为\'string\'`)
       }
       return result
     },
@@ -279,7 +280,7 @@ export default {
             })
             .catch(e => {
               console.error(e)
-              console.warn(`[${name}] 获取文件体积失败 如果上方有跨域错误提示 说明由跨域造成`)
+              console.warn(`${prefix}获取文件体积失败 如果上方有跨域错误提示 说明由跨域造成`)
             })
             .finally(e => {
               load({
@@ -542,7 +543,8 @@ export default {
         })
       }
     },
-    validate ({ size, fileType, extension }) {
+    async validate ({ file, fileType, extension }) {
+      const { size } = file
       /*function supportType(vidType, codType) {
         return document.createElement('video').canPlayType(vidType + ';codecs="' + codType + '"')
       }*/
@@ -555,8 +557,9 @@ export default {
       }
       if (fileType) {
         const curFileType = this.FileTypeCatalog[fileType]
-        if (curFileType.count && curFileType.__fileIdList && curFileType.__fileIdList.length >= curFileType.count) {
-          warning('该类型文件最多上传' + curFileType.count + '个')
+        const { count, __fileIdList, duration } = curFileType
+        if (count && __fileIdList && __fileIdList.length >= count) {
+          warning('该类型文件最多上传' + count + '个')
           return false
         }
 
@@ -570,6 +573,22 @@ export default {
           }
           warning('不能超过' + temp)
           return false
+        }
+
+        if (duration && ['audio', 'video'].includes(fileType)) {
+          let min, max
+          if (typeof duration === 'number') {
+            max = duration
+          } else if (Array.isArray(duration)) {
+            min = duration[0]
+            max = duration[1]
+          }
+
+          const {} = await getMediaDuration(file)
+
+          if (max) {
+
+          }
         }
       }
 
@@ -599,7 +618,7 @@ export default {
         const extension = getExtension(source.name)
         const fileType = this.extensionToFileType(extension)
         const isValid = this.validate(({
-          size: file.size, fileType, extension
+          file, fileType, extension,
         }))
         console.log('校验结果：', isValid)
 
@@ -740,4 +759,19 @@ export default {
 ::v-deep .el-link {
   margin-right: 16px;
 }
+
+/*::v-deep .filepond--item {
+  width: calc(33.33% - .5em);
+}
+
+::v-deep .filepond--file {
+  cursor: pointer;
+  transition-duration: 0.3s;
+}
+
+::v-deep .filepond--file:hover {
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, .9);
+  filter: blur(1px);
+  background: hsla(0, 0%, 100%, .3);
+}*/
 </style>
