@@ -34,12 +34,13 @@
     "ri": "npm run clean && pnpm i"
   },
   "dependencies": {
+    "dayjs": "^1.10.4",
     "filepond": "^4.27.1",
     "filepond-plugin-file-validate-type": "^1.2.6",
     "filepond-plugin-image-overlay": "^1.0.8",
     "filepond-plugin-image-preview": "^4.6.6",
     "filepond-plugin-media-preview": "^1.0.7",
-    "kayran": "^0.1.1",
+    "kayran": "^0.2.1",
     "kikimore": "^0.1.6",
     "lodash-es": "^4.17.21",
     "vue-filepond": "^6.0.3"

@@ -1,6 +1,4 @@
 import { isPlainObject, assignInWith, cloneDeep } from 'lodash-es'
-import { validator } from 'kayran'
-const { url } = validator
 
 export const GB = Math.pow(1024, 3)
 export const MB = Math.pow(1024, 2)
@@ -104,55 +102,4 @@ export function sliceFile (file, chunkSize = 10 * MB) {
 
 export function getExtension (name: string) {
   return name.replace(/.+\./, '').toLowerCase()
-}
-
-enum Unit {
-  hour = 'hour',
-  minute = 'minute',
-  second = 'second'
-}
-
-function toStr (time: number, unit: string,): string {
-  const system = unit === Unit.hour ? 24 : 60
-  time %= system
-  if (time < 0) {
-    time += system
-  }
-  return (time < 10 ? '0' : '') + time
-}
-
-export function getMediaDuration (file: File | string): object {
-  let src: string
-  if (file instanceof File) {
-    src = URL.createObjectURL(file)
-  } else if (!url(file)) {
-    src = file
-  } else {
-    console.error('获取媒体时长失败', file)
-    return {}
-  }
-  return new Promise((resolve, reject) => {
-    const media = document.createElement('video')
-    media.preload = 'metadata'
-    media.onloadedmetadata = () => {
-      window.URL.revokeObjectURL(media.src)
-      let seconds = media.duration
-      let HH = '', mm = '', ss = ''
-      if (seconds > 0) {
-        seconds = Math.round(seconds)
-        const hours = Math.floor(seconds / 3600)
-        if (hours > 0) {
-          HH = toStr(hours, Unit.hour) + ':'
-        }
-        mm = toStr(Math.floor(seconds / 60), Unit.minute) + ':'
-        ss = toStr(seconds, Unit.second)
-      }
-      resolve({
-        seconds,
-        HHmmss: `${HH}${mm}${ss}`
-      })
-    }
-
-    media.src = src
-  })
 }

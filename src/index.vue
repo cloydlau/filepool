@@ -77,15 +77,18 @@ const FilePond = vueFilePond(
 )
 
 import globalProps from './config'
-import { MB, GB, headersToString, isArrayJSON, getFinalProp, sliceFile, getExtension, getMediaDuration } from './utils'
-import { isEmpty, typeOf, jsonToFormData, awaitFor } from 'kayran'
-import { onAbort_preset } from './server'
+import { MB, GB, headersToString, isArrayJSON, getFinalProp, sliceFile, getExtension, } from './utils'
+import { isEmpty, typeOf, jsonToFormData, waitFor, getMediaDuration } from 'kayran'
 import { name } from '../package.json'
 const prefix = `[${name}] `
 
 import 'kikimore/dist/style.css'
 import { Swal } from 'kikimore'
 const { warning, confirm, error } = Swal
+
+import dayjs from 'dayjs'
+import objectSupport from 'dayjs/plugin/objectSupport'
+dayjs.extend(objectSupport)
 
 let progress = 1
 
@@ -191,13 +194,16 @@ export default {
     Placeholder () {
       let acceptText = ''
       if (this.accept) {
-        acceptText = '（文件格式：' + this.accept.replace(/\./g, ' ').trim() + '）'
+        acceptText = '（文件格式：' + this.acceptText + '）'
       }
       return getFinalProp(
         this.placeholder,
         globalProps.placeholder,
         '点击上传' + acceptText
       )
+    },
+    acceptText () {
+      return this.accept.replace(/\./g, ' ').trim()
     },
     DeleteConfirmation () {
       return getFinalProp(
@@ -416,15 +422,7 @@ export default {
     },
     OnAbort () {
       progress = 1
-      getFinalProp(this.onAbort, globalProps.onAbort, onAbort_preset)()
-    },
-    getMaxSize (fileType) {
-      return getFinalProp(
-        this.maxSize,
-        this.FileTypeCatalog[fileType]?.maxSize,
-        globalProps.maxSize,
-        200
-      )
+      getFinalProp(this.onAbort, globalProps.onAbort)?.()
     },
     onWarning () {
       warning('超过数量上限，最多上传' + this.Count + '个')
@@ -432,17 +430,20 @@ export default {
     extensionToFileType (extension) {
       // 兼容完整文件名
       extension = getExtension(extension)
-      if (this.fileType) {
-        // 允许多种文件类型时 需要遍历才能知道当前用户选择的文件属于哪种
-        if (this.fileType instanceof Array) {
-          for (let v of this.fileType) {
-            if (new RegExp(`\\b${extension}\\b`).test(this.FileTypeCatalog[v].accept)) {
-              return v
+
+      for (let k in this.FileTypeCatalog) {
+        if (new RegExp(`\\b${extension}\\b`).test(this.FileTypeCatalog[k].accept)) {
+          /*if (this.fileType) {
+            if (
+              (Array.isArray(this.fileType) && !this.fileType.includes(k)) ||
+              (typeof this.fileType === 'string' && this.fileType !== k)
+            ) {
+              // 上传的文件没有在fileType中找到
             }
-          }
+          }*/
+          // 上传的文件没有在FileTypeCatalog中找到
+          return k
         }
-        // 单一文件类型
-        return this.fileType
       }
     },
     view (source) {
@@ -552,18 +553,25 @@ export default {
         this.accept &&
         !new RegExp(`\\b${extension}\\b`).test(this.accept)
       ) {
-        warning(`不支持的格式：${extension}`)
+        warning(`仅能上传 ${this.acceptText} 格式的文件`)
         return false
       }
+
       if (fileType) {
         const curFileType = this.FileTypeCatalog[fileType]
+
         const { count, __fileIdList, duration } = curFileType
         if (count && __fileIdList && __fileIdList.length >= count) {
           warning('该类型文件最多上传' + count + '个')
           return false
         }
 
-        const maxSize = this.getMaxSize(fileType) * MB
+        const maxSize = getFinalProp(
+          this.maxSize,
+          this.FileTypeCatalog[fileType]?.maxSize,
+          globalProps.maxSize,
+          200
+        ) * MB
         if (size > maxSize) {
           let temp = ''
           if (maxSize >= GB) {
@@ -571,7 +579,7 @@ export default {
           } else {
             temp = (maxSize / MB).toFixed(2) + 'M'
           }
-          warning('不能超过' + temp)
+          warning('文件体积不能超过' + temp)
           return false
         }
 
@@ -584,15 +592,22 @@ export default {
             max = duration[1]
           }
 
-          const {} = await getMediaDuration(file)
-
-          if (max) {
-
+          const [seconds, err] = await waitFor(getMediaDuration(file))
+          const mediaTypeText = { 'audio': '音频', 'video': '视频' }[fileType]
+          if (max && seconds > max) {
+            warning(`${mediaTypeText}时长不能超过${this.secondsToText(max)}`)
+            return false
+          } else if (min && seconds < min) {
+            warning(`${mediaTypeText}时长不能低于${this.secondsToText(min)}`)
+            return false
           }
         }
       }
 
       return true
+    },
+    secondsToText (second) {
+      return dayjs({ second }).format('HH:mm:ss')
     },
     removeFile (id) {
       for (let k in this.FileTypeCatalog) {

@@ -57,7 +57,7 @@ export default {
       show: false,
       config: {
         param: {},
-        fileType: ['abc'],
+        fileType: ['abc', 'video'],
         maxSize: undefined,
         count: undefined,
         valueType: undefined,
