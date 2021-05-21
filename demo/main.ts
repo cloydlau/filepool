@@ -21,6 +21,9 @@ Vue.use(Filepool, {
     },
     image: {
       maxSize: 10000
+    },
+    video: {
+      duration: 3
     }
   },
   upload ({ file, jsonToFormData, }) {

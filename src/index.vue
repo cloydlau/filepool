@@ -38,7 +38,7 @@
         v-show="percentage===100"
         ref="filePond"
         :label-idle="Placeholder"
-        labelFileWaitingForSize="获取文件大小中..."
+        labelFileWaitingForSize="获取文件体积中..."
         labelFileLoadError="加载失败"
         labelFileLoading="加载中..."
         labelTapToCancel="点击取消"
@@ -58,6 +58,7 @@
         @reorderfiles="emitChange"
         @updatefiles="onUpdateFiles"
         v-bind="FilePondProps"
+        :server="server"
       />
     </template>
   </div>
@@ -77,7 +78,7 @@ const FilePond = vueFilePond(
 )
 
 import globalProps from './config'
-import { MB, GB, headersToString, isArrayJSON, getFinalProp, sliceFile, getExtension, } from './utils'
+import { MB, GB, headersToString, isArrayJSON, getFinalProp, sliceFile, getExtension, secondsToText } from './utils'
 import { isEmpty, typeOf, jsonToFormData, waitFor, getMediaDuration } from 'kayran'
 import { name } from '../package.json'
 const prefix = `[${name}] `
@@ -85,10 +86,6 @@ const prefix = `[${name}] `
 import 'kikimore/dist/style.css'
 import { Swal } from 'kikimore'
 const { warning, confirm, error } = Swal
-
-import dayjs from 'dayjs'
-import objectSupport from 'dayjs/plugin/objectSupport'
-dayjs.extend(objectSupport)
 
 let progress = 1
 
@@ -100,6 +97,7 @@ export default {
     },
   },
   props: {
+    duration: Number,
     upload: {
       validator: value => {
         if (!['boolean', 'function'].includes(typeOf(value)) || value === true) {
@@ -245,69 +243,68 @@ export default {
     /*fileForm () {
       return this.Upload ? 'url' : 'binary'
     },*/
-    /*server () {
-      // >filepond@4.17.1的版本 && fileForm === 'binary' && 清空文件再上传 满足这三个条件会导致报错
-      return this.Upload ? {
+    server () {
+      return {
+        // 初始化files时会被调用
         load: (source, load, error, progress, abort, headers) => {
-          console.log('load', arguments)
-          // 回显文件大小
-          if (this.Upload) {
-            /!*if (!isEmpty(proxy) || !isEmpty(localProxy)) {
-              let origin = ''
-              try {
-                origin = getOrigin(source)
-              } catch (e) {
-                console.error('非法的文件路径：' + source)
-              }
-              if (origin) {
-                for (let k in proxy) {
-                  if (origin.includes(proxy[k])) {
-                    source = source.replace(origin, window.location.origin + k)
-                  }
-                }
-                if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-                  for (let k in localProxy) {
-                    if (origin.includes(localProxy[k])) {
-                      source = source.replace(origin, window.location.origin + k)
-                    }
-                  }
-                }
-              }
-            }*!/
-            // todo: 获取文件体积
-            /!*fetch(source, {
-              mode: 'cors',
-              method: 'HEAD'
-            })
-            .then(res => {
-              if (res.headers) {
-                headers(headersToString(res.headers))
-              }
-            })
-            .catch(e => {
-              console.error(e)
-              console.warn(`${prefix}获取文件体积失败 如果上方有跨域错误提示 说明由跨域造成`)
-            })
-            .finally(e => {
-              load({
-                body: null
-              })
-              // 或者load(null)
-            })*!/
-            load({
-              body: null
-            })
-          } else {
-            load(null)
-          }
+          console.log('server - load')
+          // 避免不支持跨域的文件链接报错
+          load(null)
           return {
             abort: () => {
+              this.OnAbort()
               abort()
             }
           }
         },
-      } : undefined
-    },*/
+        fetch: (url, load, error, progress, abort, headers) => {
+          console.log('server - fetch')
+          return {
+            abort: () => {
+              this.OnAbort()
+              abort()
+            }
+          }
+        },
+        /*process: (fieldName, file, metadata, load, error, progress, abort, transfer, options) => {
+          console.log('server - process')
+          progress(false)
+          load(null)
+
+          // todo: 获取文件体积
+          /!*fetch(source, {
+            mode: 'cors',
+            method: 'HEAD'
+          })
+          .then(res => {
+            if (res.headers) {
+              headers(headersToString(res.headers))
+            }
+          })
+          .catch(e => {
+            console.error(e)
+            console.warn(`${prefix}获取文件体积失败 如果上方有跨域错误提示 说明由跨域造成`)
+          })
+          .finally(e => {
+            load({
+              body: null
+            })
+            // 或者load(null)
+          })*!/
+
+          // Should expose an abort method so the request can be cancelled
+          return {
+            abort: () => {
+              // This function is entered if the user has tapped the cancel button
+              this.OnAbort()
+
+              // Let FilePond know the request has been cancelled
+              abort()
+            }
+          }
+        },*/
+      }
+    },
     Upload () {
       return getFinalProp(this.upload, globalProps.upload)
     },
@@ -374,6 +371,7 @@ export default {
     window.removeEventListener('resize', this.getSubWindowFeatures)
   },
   methods: {
+    // 在value有值后只执行一次
     setFiles (value) {
       let files = []
       if (value) {
@@ -392,8 +390,7 @@ export default {
           ...type === 'string' && { source: v },
           options: {
             // https://pqina.nl/filepond/docs/patterns/api/filepond-object/#setting-initial-files
-            // local调用load方法 limbo调用restore方法
-            //type: 'local',
+            type: 'local',
             ...type === 'file' && { file: v }
           }
         }
@@ -558,9 +555,9 @@ export default {
       }
 
       if (fileType) {
-        const curFileType = this.FileTypeCatalog[fileType]
+        const fileTypeCfg = this.FileTypeCatalog[fileType]
 
-        const { count, __fileIdList, duration } = curFileType
+        const { count, __fileIdList, duration } = fileTypeCfg
         if (count && __fileIdList && __fileIdList.length >= count) {
           warning('该类型文件最多上传' + count + '个')
           return false
@@ -583,31 +580,36 @@ export default {
           return false
         }
 
-        if (duration && ['audio', 'video'].includes(fileType)) {
-          let min, max
-          if (typeof duration === 'number') {
-            max = duration
-          } else if (Array.isArray(duration)) {
-            min = duration[0]
-            max = duration[1]
-          }
+        if (['audio', 'video'].includes(fileType)) {
+          const Duration = getFinalProp(
+            this.duration,
+            duration,
+            globalProps.duration,
+          )
 
-          const [seconds, err] = await waitFor(getMediaDuration(file))
-          const mediaTypeText = { 'audio': '音频', 'video': '视频' }[fileType]
-          if (max && seconds > max) {
-            warning(`${mediaTypeText}时长不能超过${this.secondsToText(max)}`)
-            return false
-          } else if (min && seconds < min) {
-            warning(`${mediaTypeText}时长不能低于${this.secondsToText(min)}`)
-            return false
+          if (Duration) {
+            let min, max
+            if (typeof Duration === 'number') {
+              max = Duration
+            } else if (Array.isArray(Duration)) {
+              min = Duration[0]
+              max = Duration[1]
+            }
+
+            const [seconds, err] = await waitFor(getMediaDuration(file))
+            const mediaTypeText = { 'audio': '音频', 'video': '视频' }[fileType]
+            if (max && seconds > max) {
+              warning(`${mediaTypeText}时长不能超过 ${secondsToText(max)}`)
+              return false
+            } else if (min && seconds < min) {
+              warning(`${mediaTypeText}时长不能低于 ${secondsToText(min)}`)
+              return false
+            }
           }
         }
       }
 
       return true
-    },
-    secondsToText (second) {
-      return dayjs({ second }).format('HH:mm:ss')
     },
     removeFile (id) {
       for (let k in this.FileTypeCatalog) {
@@ -666,11 +668,11 @@ export default {
           const extension = file.name.replace(/.+\./, '.').toLowerCase()
           const fileType = this.extensionToFileType(extension)
           if (fileType) {
-            const curFileType = this.FileTypeCatalog[fileType]
-            if (curFileType.__fileIdList) {
-              curFileType.__fileIdList.add(id)
+            const fileTypeCfg = this.FileTypeCatalog[fileType]
+            if (fileTypeCfg.__fileIdList) {
+              fileTypeCfg.__fileIdList.add(id)
             } else {
-              curFileType.__fileIdList = new Set([id])
+              fileTypeCfg.__fileIdList = new Set([id])
             }
           }
         })

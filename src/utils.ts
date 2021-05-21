@@ -1,4 +1,9 @@
 import { isPlainObject, assignInWith, cloneDeep } from 'lodash-es'
+import dayjs from 'dayjs'
+import objectSupport from 'dayjs/plugin/objectSupport'
+dayjs.extend(objectSupport)
+import toObject from 'dayjs/plugin/toObject'
+dayjs.extend(toObject)
 
 export const GB = Math.pow(1024, 3)
 export const MB = Math.pow(1024, 2)
@@ -102,4 +107,10 @@ export function sliceFile (file, chunkSize = 10 * MB) {
 
 export function getExtension (name: string) {
   return name.replace(/.+\./, '').toLowerCase()
+}
+
+export function secondsToText (second: number): string {
+  const day = dayjs({ second })
+  const { hours } = day.toObject()
+  return day.format(hours > 0 ? 'HH:mm:ss' : 'mm:ss')
 }
