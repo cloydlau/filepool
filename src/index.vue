@@ -304,7 +304,7 @@ export default {
       progress: 1,
       addingQueueIsValid: false,
       addingQueue: 0,
-      uploading: false,
+      uploadQueue: 0,
     }
   },
   watch: {
@@ -450,7 +450,7 @@ export default {
       }
     },
     doUpload (param) {
-      this.uploading = true
+      ++this.uploadQueue
       const file = param.file
       const uploadParam = {
         file,
@@ -477,11 +477,11 @@ export default {
             console.error(e)
           })
           .finally(() => {
-            this.uploading = false
+            --this.uploadQueue
           })
         })
         .catch(e => {
-          this.uploading = false
+          --this.uploadQueue
           console.error(e)
           error(typeof e === 'string' ? e : '上传失败')
         })
@@ -673,7 +673,7 @@ export default {
       // beforeAddFile返回false仍会触发onUpdateFiles 其中第一次的数据是脏的
       // 初始化files时第一次触发的onUpdateFiles要早于beforeAddFile
       console.log(this.addingQueue)
-      if (this.addingQueue === 0 && this.addingQueueIsValid && this.uploading === false) {
+      if (this.addingQueue === 0 && this.addingQueueIsValid && this.uploadQueue === 0) {
         console.log('onUpdateFiles', items)
         this.fileCount = items.length
         // 记录每种类型的上传数量

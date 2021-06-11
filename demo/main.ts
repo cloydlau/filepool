@@ -30,7 +30,7 @@ Vue.use(Filepool, {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         resolve(import.meta.env.VITE_APP_TEST_URL)
-      }, 500)
+      }, 1000)
       /*request({
         url: import.meta.env.VITE_APP_UPLOAD_API,
         method: 'POST',
