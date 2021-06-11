@@ -37,6 +37,7 @@
       <file-pond
         v-show="percentage===100"
         ref="filePond"
+        credits=""
         :label-idle="Placeholder"
         labelFileWaitingForSize="获取文件体积中..."
         labelFileLoadError="加载失败"
@@ -47,17 +48,16 @@
         labelTapToUndo="点击删除"
         allow-multiple="true"
         :files="files"
-        :max-files="Count||null"
+        :max-files="MaxCount"
         :beforeAddFile="beforeAddFile"
-        @activatefile="onActivateFile"
         :disabled="Disabled"
         :beforeRemoveFile="beforeRemoveFile"
         :allowDrop="false"
         :onwarning="onWarning"
         :allowReorder="true"
-        @reorderfiles="emitChange"
+        @activatefile="onActivateFile"
+        @reorderfiles="onReorderFiles"
         @updatefiles="onUpdateFiles"
-        v-bind="FilePondProps"
         :server="server"
       />
     </template>
@@ -86,8 +86,7 @@ const prefix = `[${name}] `
 import 'kikimore/dist/style.css'
 import { Swal } from 'kikimore'
 const { warning, confirm, error } = Swal
-
-let progress = 1
+import { throttle } from 'lodash-es'
 
 export default {
   name: 'Filepool',
@@ -97,7 +96,7 @@ export default {
     },
   },
   props: {
-    duration: Number,
+    duration: [Number, Array],
     upload: {
       validator: value => {
         if (!['boolean', 'function'].includes(typeOf(value)) || value === true) {
@@ -118,74 +117,53 @@ export default {
     fileType: {
       type: [String, Array],
     },
-    count: {
-      validator: value => {
-        if (!Number.isInteger(value)) {
-          console.error('count需为正整数')
-          return false
-        } else if (value < 1) {
-          console.error('count不能小于1')
-          return false
-        }
-        return true
-      }
-    },
+    count: [Number, Array],
     disabled: {
       validator: value => value === '' || ['boolean'].includes(typeOf(value)),
     },
     valueType: String,
-    maxSize: {
-      validator: value => {
-        if (typeof value !== 'number') {
-          console.error(`${prefix}maxSize必须为Number类型`)
-          return false
-        } else if (value <= 0) {
-          console.error(`${prefix}maxSize必须大于0`)
-          return false
-        }
-        return true
-      }
-    },
-    filePondProps: {
-      type: Object
-    }
+    size: [Number, Array],
   },
   computed: {
     FilePondProps () {
-      return getFinalProp(this.filePondProps, globalProps.filePondProps)
+      let temp = {}
+      Object.keys(this.$attrs).filter(v => !Object.keys(this.$props).includes(v)).map(v => {
+        temp[v] = getFinalProp(this.$attrs[v], globalProps[v],)
+      })
+      return temp
     },
     FileTypeCatalog () {
       return getFinalProp(
         globalProps.fileTypeCatalog,
         {
           image: {
-            maxSize: 10,
+            size: 10,
             accept: '.jpg,.jpeg,.png',
             __canPreview: true,
           },
           video: {
-            maxSize: 200,
+            size: 200,
             accept: '.mp4',
             __canPreview: true,
           },
           audio: {
-            maxSize: 60,
+            size: 60,
             accept: '.mp3',
             __canPreview: true,
           },
           apk: {
-            maxSize: 200,
+            size: 200,
             accept: '.apk',
           },
           excel: {
             accept: '.xlsx,.xls',
-            maxSize: 100,
+            size: 100,
           },
         }
       )
     },
     percentage () {
-      const result = Math.round(progress * 100)
+      const result = Math.round(this.progress * 100)
       // progressEvent.loaded 是可能大于 file.size 的
       return result > 100 ? 100 : result
     },
@@ -229,6 +207,12 @@ export default {
         return arr.join(',')
       }
     },
+    MinCount () {
+      return Array.isArray(this.Count) ? this.Count[0] : undefined
+    },
+    MaxCount () {
+      return (Array.isArray(this.Count) ? this.Count[1] : this.Count) ?? null
+    },
     Count () {
       return getFinalProp(this.count, globalProps.count, 1)
     },
@@ -244,7 +228,7 @@ export default {
       return this.Upload ? 'url' : 'binary'
     },*/
     server () {
-      return {
+      return {/*
         // 初始化files时会被调用
         load: (source, load, error, progress, abort, headers) => {
           console.log('server - load')
@@ -266,7 +250,7 @@ export default {
             }
           }
         },
-        /*process: (fieldName, file, metadata, load, error, progress, abort, transfer, options) => {
+        process: (fieldName, file, metadata, load, error, progress, abort, transfer, options) => {
           console.log('server - process')
           progress(false)
           load(null)
@@ -302,7 +286,8 @@ export default {
               abort()
             }
           }
-        },*/
+        },
+      */
       }
     },
     Upload () {
@@ -314,10 +299,12 @@ export default {
     return {
       subWindowFeatures: '',
       files: undefined,
+      fileCount: 0,
       unwatchValue: null,
-      initializingFiles: false,
-      //progress: 1, // todo: 未知原因报错
-      queueIsDirty: false,
+      progress: 1,
+      addingQueueIsValid: false,
+      addingQueue: 0,
+      uploading: false,
     }
   },
   watch: {
@@ -334,24 +321,26 @@ export default {
         }
         // 更换fileType时，清空value
         if (!isEmpty(o)) {
-          this.onUpdateFiles([])
+          this.onUpdateFilesThrottled([])
         }
       }
     },
-    /*fileForm: {
-      immediate: true,
-      handler (newVal) {
-        this.handleUpdateFilesListener()
-      }
-    },
-    Disabled (n) {
-      this.handleUpdateFilesListener()
-    },*/
   },
   created () {
+    this.onUpdateFilesThrottled = items => {
+      if (this.addingQueue === 0 && this.addingQueueIsValid) {
+        throttle(
+          this.onUpdateFiles,
+          100,
+          {
+            leading: false, // true会导致：如果调用≥2次 则至少触发2次 但此时可能只期望触发1次
+            trailing: true
+          }
+        )(items)
+      }
+    }
     this.unwatchValue = this.$watch('value', (n, o) => {
       if (n) {
-        this.initializingFiles = true
         // immediate时this.unwatchValue为空
         if (this.unwatchValue) {
           this.unwatchValue()
@@ -396,17 +385,6 @@ export default {
         }
       })
     },
-    handleUpdateFilesListener () {
-      /*if (!this.Disabled) {
-        this.$nextTick(() => {
-          if (this.fileForm === 'binary') {
-            this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
-          } else {
-            this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
-          }
-        })
-      }*/
-    },
     getSubWindowFeatures () {
       const width = window.screen.availWidth / 2
       const height = window.screen.availHeight / 2
@@ -418,11 +396,11 @@ export default {
       this.view(file.source)
     },
     OnAbort () {
-      progress = 1
+      this.progress = 1
       getFinalProp(this.onAbort, globalProps.onAbort)?.()
     },
     onWarning () {
-      warning('超过数量上限，最多上传' + this.Count + '个')
+      warning('最多上传' + this.MaxCount + '个文件')
     },
     extensionToFileType (extension) {
       // 兼容完整文件名
@@ -472,6 +450,7 @@ export default {
       }
     },
     doUpload (param) {
+      this.uploading = true
       const file = param.file
       const uploadParam = {
         file,
@@ -479,53 +458,51 @@ export default {
         GB,
         sliceFile,
         setProgress: e => {
-          progress = e
+          this.progress = e
         },
         jsonToFormData,
         fileType: this.fileType
       }
       const promise = this.Upload(uploadParam)
       if (promise instanceof Promise) {
-        progress = 0
+        this.progress = 0
         promise
         .then(fileUrl => {
-          this.addFile(fileUrl)
+          // file可以是string或array
+          this.$refs.filePond.addFiles(fileUrl)
+          .then(items => {
+
+          })
+          .catch(e => {
+            console.error(e)
+          })
+          .finally(() => {
+            this.uploading = false
+          })
         })
         .catch(e => {
+          this.uploading = false
           console.error(e)
           error(typeof e === 'string' ? e : '上传失败')
         })
         .finally(() => {
-          progress = 1
+          this.progress = 1
         })
-      } /*else {
-        this.addFile(file)
-      }*/
-    },
-    addFile (file) {
-      // file可以是string或array
-      this.$refs.filePond.addFiles(file)
-      .then(items => {
-
-      })
-      .catch(e => {
-        console.error(e)
-      })
+      }
     },
     emitChange (files) {
       // value的同步意味着着files等待初始化的结束
       if (this.unwatchValue) {
         this.unwatchValue()
         this.unwatchValue = null
-      } else if (this.initializingFiles) {
-        this.initializingFiles = false
       } else {
-        let value = files.map(v => this.Upload ? v.source : v.file)
+        // 文件形态为File时，要考虑初始值，初始值的v.file被filepond封装成了Blob，此时应该使用v.source（原始url）
+        let value = Array.from(files, v => (this.Upload || v.source) ? v.source : v.file)
         if (this.ValueType === 'string') {
-          value = this.Count === 1 ? value.toString() : JSON.stringify(value)
+          value = this.MaxCount > 1 ? JSON.stringify(value) : value.toString()
         }
         //auto模式
-        else if (!this.ValueType && this.Count === 1) {
+        else if (!this.ValueType && this.MaxCount === 1) {
           value = this.Upload ? value.toString() : value[0]
         }
         this.$emit('input', value)
@@ -563,20 +540,32 @@ export default {
           return false
         }
 
-        const maxSize = getFinalProp(
-          this.maxSize,
-          this.FileTypeCatalog[fileType]?.maxSize,
-          globalProps.maxSize,
-          200
+        const Size = getFinalProp(
+          this.size,
+          this.FileTypeCatalog[fileType]?.size,
+          globalProps.size,
         ) * MB
-        if (size > maxSize) {
-          let temp = ''
-          if (maxSize >= GB) {
-            temp = (maxSize / GB).toFixed(2) + 'G'
+        let minSize, maxSize
+        if (typeof Size === 'number') {
+          maxSize = Size
+        } else if (Array.isArray(Size)) {
+          minSize = Size[0]
+          maxSize = Size[1]
+        }
+
+        function getSizeText (size) {
+          if (size >= GB) {
+            return (size / GB).toFixed(2) + 'G'
           } else {
-            temp = (maxSize / MB).toFixed(2) + 'M'
+            return (size / MB).toFixed(2) + 'M'
           }
-          warning('文件体积不能超过' + temp)
+        }
+
+        if (size > maxSize) {
+          warning('文件体积不能超过' + getSizeText(maxSize))
+          return false
+        } else if (size < minSize) {
+          warning('文件体积不能低于' + getSizeText(minSize))
           return false
         }
 
@@ -597,12 +586,16 @@ export default {
             }
 
             const [seconds, err] = await waitFor(getMediaDuration(file))
-            const mediaTypeText = { 'audio': '音频', 'video': '视频' }[fileType]
+
+            function getMediaTypeText (fileType) {
+              return { 'audio': '音频', 'video': '视频' }[fileType]
+            }
+
             if (max && seconds > max) {
-              warning(`${mediaTypeText}时长不能超过 ${secondsToText(max)}`)
+              warning(`${getMediaTypeText(fileType)}时长不能超过 ${secondsToText(max)}`)
               return false
             } else if (min && seconds < min) {
-              warning(`${mediaTypeText}时长不能低于 ${secondsToText(min)}`)
+              warning(`${getMediaTypeText(fileType)}时长不能低于 ${secondsToText(min)}`)
               return false
             }
           }
@@ -612,11 +605,18 @@ export default {
       return true
     },
     removeFile (id) {
-      for (let k in this.FileTypeCatalog) {
-        if (this.FileTypeCatalog[k].__fileIdList?.has(id)) {
-          this.FileTypeCatalog[k].__fileIdList.delete(id)
-          return
+      if (this.MinCount > 0 && this.fileCount <= this.MinCount) {
+        warning('至少上传' + this.MinCount + '个文件')
+        return false
+      } else {
+        for (let k in this.FileTypeCatalog) {
+          if (this.FileTypeCatalog[k].__fileIdList?.has(id)) {
+            this.FileTypeCatalog[k].__fileIdList.delete(id)
+            return
+          }
         }
+        this.addingQueueIsValid = true
+        return true
       }
     },
 
@@ -626,43 +626,56 @@ export default {
     /*onInit () {
       console.log('onInit')
     },*/
-    // 同时上传多个文件时 触发顺序为：beforeAddFile1 beforeAddFile2 onUpdateFiles1 onUpdateFiles2
-    beforeAddFile (item) {
+    onReorderFiles (e) {
+      this.emitChange(e)
+    },
+    async beforeAddFile (item) {
       console.log('beforeAddFile', item)
 
+      ++this.addingQueue
+      let result = false
       const { file, source } = item
       if (source instanceof File) {
         const extension = getExtension(source.name)
         const fileType = this.extensionToFileType(extension)
-        const isValid = this.validate(({
+        const isValid = await this.validate(({
           file, fileType, extension,
         }))
         console.log('校验结果：', isValid)
 
-        if (!isValid) {
-          this.queueIsDirty = true
+        // 队列中只要有一个文件是有效的 就代表队列有效
+        if (isValid) {
+          this.addingQueueIsValid = isValid
         }
 
         if (this.Upload) {
           if (isValid) {
             this.doUpload({ file })
           }
-          return false
         } else {
-          return isValid
+          result = isValid
         }
       }
       // 不校验初始值（初始值只能是url）
       else {
-        return true
+        this.addingQueueIsValid = true
+        result = true
       }
+      --this.addingQueue
+      return result
     },
+    // called for adding files, removing files, and when files finish loading.
     onUpdateFiles (items) {
-      if (this.queueIsDirty) {
-        console.log('onUpdateFiles（beforeAddFile返回false仍然触发）', items)
-        this.queueIsDirty = false
-      } else {
+      // 添加文件时 会触发两次 如果触发了beforeAddFile中的异步操作 可能触发三次
+      // 删除文件时 只触发一次
+      // 执行顺序：没有异步操作时 先执行所有的beforeAddFile 再执行所有的onUpdateFiles
+      // 含异步操作时：先执行完毕所有的同步beforeAddFile 异步的beforeAddFile会穿插在后续的onUpdateFiles中
+      // beforeAddFile返回false仍会触发onUpdateFiles 其中第一次的数据是脏的
+      // 初始化files时第一次触发的onUpdateFiles要早于beforeAddFile
+      console.log(this.addingQueue)
+      if (this.addingQueue === 0 && this.addingQueueIsValid && this.uploading === false) {
         console.log('onUpdateFiles', items)
+        this.fileCount = items.length
         // 记录每种类型的上传数量
         items.map(({ file, id }) => {
           const extension = file.name.replace(/.+\./, '.').toLowerCase()
@@ -678,31 +691,10 @@ export default {
         })
 
         this.emitChange(items)
+        this.addingQueueIsValid = false
+      } else {
+        console.log(`%conUpdateFiles`, 'text-decoration:line-through;color:lightgrey;')
       }
-
-      // beforeAddFile返回false仍然会触发onUpdateFiles
-      /*if (items?.[0]?.source instanceof File && this.fileForm !== 'binary') {
-        return false
-      }*/
-
-      /*const getValueLen = () => {
-        if (this.value) {
-          if (typeof this.value === 'string') {
-            const arr = isArrayJSON(this.value)
-            return arr ? arr.length : 1
-          }
-          return this.value.length
-        }
-        return 0
-      }
-
-      if (items.length !== getValueLen()) {
-        this.emitChange(items)
-      }*/
-
-      /*if (this.fileForm === 'binary') {
-        this.$refs.filePond.$off('updatefiles', this.onUpdateFiles)
-      }*/
     },
     /*onActivatefile (file) {
       this.preview.src = file.source
@@ -716,19 +708,13 @@ export default {
             title: '删除文件',
             icon: 'warning',
           }).then(() => {
-            this.removeFile(item.id)
-            // 删除前开启监听 否则无法清空
-            //this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
-            resolve(true)
+            resolve(this.removeFile(item.id))
           }).catch(() => {
             resolve(false)
           })
         })
       } else {
-        this.removeFile(item.id)
-        // 删除前开启监听 否则无法清空
-        //this.$refs.filePond.$on('updatefiles', this.onUpdateFiles)
-        return true
+        return this.removeFile(item.id)
       }
     },
   }

@@ -3,16 +3,14 @@
 
 
     <Filepool
-      v-model="value"
-      v-bind="config"
+      v-model="config.value"
+      v-bind.sync="config"
       ref="filepool"
     />
     <p>value</p>
     <json-editor-vue :value="value__" readonly/>
 
-    <el-form
-      label-position="top"
-    >
+    <el-form label-position="top">
       <h3>Props</h3>
       <el-form-item label="fileType">
         <el-radio v-model="config.fileType" label="video">视频</el-radio>
@@ -52,25 +50,24 @@ export default {
   components: { JsonEditorVue },
   data () {
     return {
-      value: import.meta.env.VITE_APP_TEST_URL,
       value__: null,
       show: false,
       config: {
-        param: {},
+        value: import.meta.env.VITE_APP_TEST_URL,
         fileType: ['abc', 'video'],
-        maxSize: undefined,
+        size: undefined,
         count: undefined,
         valueType: undefined,
         disabled: false,
-        upload: false,
+        //upload: false,
       }
     }
   },
   watch: {
-    value: {
+    'config.value': {
       immediate: true,
       handler (n, o) {
-        this.value__ = JSON.parse(JSON.stringify(n))
+        this.value__ = n ? JSON.parse(JSON.stringify(n)) : undefined
       }
     },
   },

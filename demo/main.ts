@@ -12,23 +12,26 @@ request.interceptors.response.use(response => response.config.method.toUpperCase
 import Filepool from '../src/main'
 Vue.use(Filepool, {
   valueType: undefined,
-  maxSize: 200,
-  count: 3,
+  size: 200,
+  count: 1000,
   fileTypeCatalog: {
     abc: {
-      maxSize: 2.01,
+      size: 2.01,
       accept: '.docx'
     },
     image: {
-      maxSize: 10000
+      size: 10000
     },
     video: {
-      duration: 3
+      duration: 3000
     }
   },
   upload ({ file, jsonToFormData, }) {
     return new Promise((resolve, reject) => {
-      request({
+      setTimeout(() => {
+        resolve(import.meta.env.VITE_APP_TEST_URL)
+      }, 500)
+      /*request({
         url: import.meta.env.VITE_APP_UPLOAD_API,
         method: 'POST',
         data: jsonToFormData({
@@ -47,7 +50,7 @@ Vue.use(Filepool, {
         }
       }).catch(e => {
         reject(e)
-      })
+      })*/
     })
   },
 })
