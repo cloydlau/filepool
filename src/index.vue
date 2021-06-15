@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="relative">
     <div v-if="Disabled">
       <el-link v-for="(v, index) of files" :key="index" @click="view(v.source)">点击查看 <i class="el-icon-view"/></el-link>
     </div>
@@ -16,26 +16,36 @@
       </el-switch>
       <el-input v-if="isLink" v-model="link" maxlength="500" show-word-limit @change="changeLink"
                 placeholder="仅支持以.mp4结尾的视频链接"/>-->
-      <div v-show="percentage<100" style="display:flex;justify-content:space-between;align-items:flex-end">
+      <div
+        v-show="percentage<100"
+        class="absolute w-full h-full z-1 flex flex-col justify-center items-center"
+        style="background-color:rgba(255,255,255,.9);"
+      >
         <el-progress
           :text-inside="true"
           :stroke-width="24"
           :percentage="percentage"
-          style="margin-top:5px;display:inline-block;width:calc(100% - 30px)"
+          class="inline-block w-9\/10"
+          style="height:fit-content;width:90%;transition:opacity .3s;"
           :color="[
-            {color: '#f56c6c', percentage: 20},
-            {color: '#e6a23c', percentage: 40},
-            {color: '#6f7ad3', percentage: 60},
-            {color: '#1989fa', percentage: 80},
-            {color: '#5cb87a', percentage: 100}
-          ]"
+              {color: '#f56c6c', percentage: 20},
+              {color: '#e6a23c', percentage: 40},
+              {color: '#6f7ad3', percentage: 60},
+              {color: '#1989fa', percentage: 80},
+              {color: '#5cb87a', percentage: 100}
+            ]"
         />
-        <el-tooltip content="取消上传">
-          <el-button circle type="info" icon="el-icon-close" size="mini" plain @click="OnAbort"/>
-        </el-tooltip>
+        <el-button
+          type="danger"
+          size="mini"
+          plain
+          @click="OnAbort"
+          class="mt-5px"
+        >
+          取消
+        </el-button>
       </div>
       <file-pond
-        v-show="percentage===100"
         ref="filePond"
         credits=""
         :label-idle="Placeholder"
@@ -243,6 +253,7 @@ export default {
         },
         fetch: (url, load, error, progress, abort, headers) => {
           console.log('server - fetch')
+          load(url)
           return {
             abort: () => {
               this.OnAbort()
@@ -287,8 +298,7 @@ export default {
             }
           }
         },
-      */
-      }
+      */}
     },
     Upload () {
       return getFinalProp(this.upload, globalProps.upload)
@@ -471,7 +481,7 @@ export default {
           // file可以是string或array
           this.$refs.filePond.addFiles(fileUrl)
           .then(items => {
-
+            this.addingQueueIsValid = true
           })
           .catch(e => {
             console.error(e)
@@ -519,7 +529,14 @@ export default {
       }
     },
     async validate ({ file, fileType, extension }) {
-      const { size } = file
+      const { name, size } = file
+
+      const swalCfg = {
+        customClass: 'filepool',
+        text: name,
+        timer: 5000,
+      }
+
       /*function supportType(vidType, codType) {
         return document.createElement('video').canPlayType(vidType + ';codecs="' + codType + '"')
       }*/
@@ -527,7 +544,10 @@ export default {
         this.accept &&
         !new RegExp(`\\b${extension}\\b`).test(this.accept)
       ) {
-        warning(`仅能上传 ${this.acceptText} 格式的文件`)
+        warning({
+          ...swalCfg,
+          title: `仅能上传 ${this.acceptText} 格式的文件`,
+        })
         return false
       }
 
@@ -536,7 +556,10 @@ export default {
 
         const { count, __fileIdList, duration } = fileTypeCfg
         if (count && __fileIdList && __fileIdList.length >= count) {
-          warning('该类型文件最多上传' + count + '个')
+          warning({
+            ...swalCfg,
+            title: '该类型文件最多上传' + count + '个',
+          })
           return false
         }
 
@@ -562,10 +585,16 @@ export default {
         }
 
         if (size > maxSize) {
-          warning('文件体积不能超过' + getSizeText(maxSize))
+          warning({
+            ...swalCfg,
+            title: '文件体积不能超过' + getSizeText(maxSize),
+          })
           return false
         } else if (size < minSize) {
-          warning('文件体积不能低于' + getSizeText(minSize))
+          warning({
+            ...swalCfg,
+            title: '文件体积不能低于' + getSizeText(minSize),
+          })
           return false
         }
 
@@ -592,10 +621,16 @@ export default {
             }
 
             if (max && seconds > max) {
-              warning(`${getMediaTypeText(fileType)}时长不能超过 ${secondsToText(max)}`)
+              warning({
+                ...swalCfg,
+                title: `${getMediaTypeText(fileType)}时长不能超过 ${secondsToText(max)}`,
+              })
               return false
             } else if (min && seconds < min) {
-              warning(`${getMediaTypeText(fileType)}时长不能低于 ${secondsToText(min)}`)
+              warning({
+                ...swalCfg,
+                title: `${getMediaTypeText(fileType)}时长不能低于 ${secondsToText(min)}`,
+              })
               return false
             }
           }
@@ -664,7 +699,7 @@ export default {
       --this.addingQueue
       return result
     },
-    // called for adding files, removing files, and when files finish loading.
+    // 官方：called for adding files, removing files, and when files finish loading.
     onUpdateFiles (items) {
       // 添加文件时 会触发两次 如果触发了beforeAddFile中的异步操作 可能触发三次
       // 删除文件时 只触发一次
@@ -672,8 +707,8 @@ export default {
       // 含异步操作时：先执行完毕所有的同步beforeAddFile 异步的beforeAddFile会穿插在后续的onUpdateFiles中
       // beforeAddFile返回false仍会触发onUpdateFiles 其中第一次的数据是脏的
       // 初始化files时第一次触发的onUpdateFiles要早于beforeAddFile
-      console.log(this.addingQueue)
-      if (this.addingQueue === 0 && this.addingQueueIsValid && this.uploadQueue === 0) {
+      //console.log(this.addingQueue, this.addingQueueIsValid, this.uploadQueue)
+      if (this.addingQueue === 0 && this.uploadQueue === 0) {
         console.log('onUpdateFiles', items)
         this.fileCount = items.length
         // 记录每种类型的上传数量
@@ -721,7 +756,20 @@ export default {
 }
 </script>
 
+<style lang="scss">
+.filepool.swal2-toast .swal2-html-container {
+  text-align: center;
+  padding-bottom: .625em;
+  color: darkgrey;
+  text-decoration: line-through;
+}
+</style>
+
 <style lang="scss" scoped>
+.w-9\/10 {
+  width: 90%;
+}
+
 ::v-deep .filepond--file {
   cursor: pointer;
   transform: translateZ(0);

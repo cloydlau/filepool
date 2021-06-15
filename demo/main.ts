@@ -26,9 +26,14 @@ Vue.use(Filepool, {
       duration: 3000
     }
   },
-  upload ({ file, jsonToFormData, }) {
+  upload ({ file, jsonToFormData, setProgress }) {
     return new Promise((resolve, reject) => {
+      let progress = 0
+      const interval = setInterval(() => {
+        setProgress(progress += .1)
+      }, 100)
       setTimeout(() => {
+        clearInterval(interval)
         resolve(import.meta.env.VITE_APP_TEST_URL)
       }, 1000)
       /*request({

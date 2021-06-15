@@ -1,3 +1,5 @@
+import 'virtual:windi.css'
+
 import Filepool from './index.vue'
 import { init } from './config'
 import { MB, GB, sliceFile } from './utils'

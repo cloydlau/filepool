@@ -2,25 +2,25 @@
 
 ![preview](./preview.png)
 
-<br/>
+<br>
 
 ## Features
 
 - √ v-model双绑
 - √ 支持分片上传/断点续传
 - √ 支持上传进度显示、中途取消
-- √ 支持格式限制/大小限制/数量限制 可针对不同类型分别设置
-- √ 自动根据数量限制选择string或array数据类型 也可以手动指定
+- √ 支持对文件的格式、体积、数量、音视频时长进行限制 可以对不同的文件类型设置不同的限制
+- √ 自动根据数量限制选择数据类型 也可以手动指定
 - √ 支持拖拉拽排序（响应式）
-- √ 支持上传后预览/禁用时预览
-- √ 全局安装/局部引入 通用参数仅需配置一次
+- √ 支持文件预览
+- √ 全局或局部引入 参数支持全局或局部配置
 
 element-ui集成说明：
 
 - element-ui是以外置依赖的方式引入的 所以不必担心代码体积和版本不一致等问题
 - 适配element-ui的el-form组件 支持el-form的全局disabled
 
-<br/>
+<br>
 
 ## Installation
 
@@ -63,42 +63,68 @@ export default {
 </script>
 ```
 
-<br/>
+<br>
 
 ## Props
 
-```html
-
-<Filepool v-model="" fileType="video"/>
-```
-
-| Attribute | Description | Configuration Mode | Type | Accepted Values | Default |
-| --- | --- | --- | --- | --- | --- |
-| value / v-model | 文件 | props | string / array | | |
-| disabled | 是否禁用 | props | boolean | | false |
-| fileTypeCatalog | 文件类型目录 | global | object | | *see below* |
-| fileType | 指定使用fileTypeCatalog中的哪一个 | props | string, array | prop of fileTypeCatalog | |
-| valueType | 数据类型 | global, props | string | 'string' / 'array' | *see below* |
-| maxSize | 大小限制 单位MB | global, props | number | | 200 |
-| count | 数量限制 | global, props | number | | 1 |
-| delConfirmation | 是否在删除文件时弹框确认 | global | boolean | | false |
-| base64Encoding | 在没有配置request时，是否将文件进行base64编码 | global, props | boolean | | false |
-| placeholder | 提示信息（hint） | global, props | string | | '点击上传' |
+| Attribute | Description | Type | Accepted Values | Default |
+| --- | --- | --- | --- | --- |
+| v-model / value | 文件 | string, array | | |
+| disabled | 是否禁用 | boolean | | false |
+| fileTypeCatalog | 文件类型目录 | object | | |
+| fileType | 指定使用 `fileTypeCatalog` 中的哪一个 | string, array | props of fileTypeCatalog | |
+| valueType | 数据类型 | string | 'string', 'array' | |
+| size | 大小限制 单位MB | number, number[] | | |
+| duration | 音视频时长限制 单位秒 | number, number[] | | |
+| count | 数量限制 | number, number[] | | 1 |
+| deleteConfirmation | 是否在删除文件时弹框确认 | boolean | | false |
+| placeholder | hint | string | | '点击上传' |
 
 **接口相关**
 
 > 由于分片上传的实现由后端主导 五花八门 无法统一 故上传的整个过程放开自定义 谢绝过度封装
 
-| Attribute | Description | Configuration Mode | Type | Accepted Values | Default |
-| --- | --- | --- | --- | --- | --- |
-| upload | 自定义上传的整个过程 | global, props | function | *see below* | |
-| onAbort | 回调 在上传中途点击取消按钮触发 | global, props | function | *see below* | |
+| Attribute | Description | Type | Accepted Values | Default |
+| --- | --- | --- | --- | --- |
+| upload | 自定义上传的整个过程 | function | *see below* | |
+| onAbort | 回调 在上传中途点击取消按钮触发 | function | *see below* | |
 
-<br/>
+### count, duration, size
 
-### upload
+- number
+
+数量上限
+
+- number[]
+
+    0. 数量下限
+    1. 数量上限
+
+<br>
+
+## Config rules
+
+- 双向绑定参数（`v-model`, `*.sync`）仅支持局部配置
+- `fileType` 仅支持局部配置
+- `fileTypeCatalog` 仅支持全局配置
+- 其余参数均支持全局或局部配置
+
+权重：
+
+- 局部配置高于全局配置
+- 对于对象类型的参数 局部配置会与全局配置进行合并 同名属性会被局部配置覆盖
+- 【特例】`count`, `size`, `duration` 的权重排序：
+    1. 局部配置中的 `count`, `size`, `duration`
+    2. **全局配置中 `fileTypeCatalog` 对应文件类型的 `count`, `size`, `duration`**
+    3. 全局配置中的 `count`, `size`, `duration`
+
+<br>
+
+## 调用接口上传
 
 ```js
+// 极简示例
+
 import Filepool from 'filepool'
 import request from '@/utils/request' // 你的axios封装
 
@@ -113,6 +139,8 @@ Vue.use(Filepool, {
         }),
       }).then(res => {
         if (typeof res?.data === 'string') {
+          // resolve的参数将用于filepond的addFiles函数 文件数量不限
+          // https://pqina.nl/filepond/docs/patterns/api/filepond-instance/#adding-files
           resolve(res.data)
         } else {
           reject(res.message)
@@ -125,13 +153,10 @@ Vue.use(Filepool, {
 })
 ```
 
-<br/>
-
-**相对完整的分片上传示例**
-
-> 含中途取消、进度显示、断点续传等
-
 ```js
+// 相对完整的分片上传示例
+// 含中途取消、进度显示、断点续传等
+
 import Filepool from 'filepool'
 import request from '@/utils/request' // 你的axios封装
 import { CancelToken } from 'axios'
@@ -211,6 +236,8 @@ Vue.use(Filepool, {
           let data = 'data' in res ? res.data : res
           if (data?.status === '200') {
             setProgress(1)
+            // resolve的参数将用于filepond的addFiles函数 文件数量不限
+            // https://pqina.nl/filepond/docs/patterns/api/filepond-instance/#adding-files
             resolve(data.url)
           } else if (count++ < chunks.length - 1) {
             formData.set('taskId', data.url)
@@ -235,65 +262,62 @@ Vue.use(Filepool, {
   onAbort () {
     // 在上传中途点击取消按钮触发
     // 可以在这里重置断点续传次数、中止请求、调接口清除分片文件等
-    failTimes = Number.MAX_VALUE
+    failTimes = Number.MAX_SAFE_INTEGER
     cancelUpload?.()
   }
 })
 ```
 
-<br/>
+<br>
 
 ## 文件形态
 
-- 服务器模式：配置了upload时进入该模式
-- 离线模式：没有配置upload时进入该模式
-    - 二进制File：默认
-    - base64: base64Encoding设置为true时进入该模式
+- url：配置了 `upload` 时
+- File：没有配置 `upload` 时
 
-<br/>
+<br>
 
 ## 文件数据类型
 
-- auto（默认）: count为1时采用string，count>1时采用array
-- string: 字符串类型，count为1时采用string，count＞1时采用json-string
-- array: 数组类型
+- `auto`（默认） : count为1时采用string，count>1时采用array
+- `string` : 字符串类型，count为1时采用string，count＞1时采用json字符串
+- `array`
 
-<br/>
+<br>
 
-## 文件目录
+## 文件类型目录
 
-> 你可以全局定义一个文件目录 预设一些你可能用到的文件类型（任何类型都可以） 并规定这些类型的格式和大小 在组件中使用fileType属性来对应
-
-默认值
+你可以全局定义一个文件目录 预设一些你可能用到的文件类型（任何类型都可以） 并规定这些类型的格式和大小 在组件中使用fileType属性来对应
 
 ```
+// 默认值
+
 fileTypeCatalog: {
   image: {
-    maxSize: 10,
+    size: 10,
     accept: '.jpg,.jpeg,.png',
   },
   video: {
-    maxSize: 200,
+    size: 200,
     accept: '.mp4',
   },
   audio: {
-    maxSize: 60,
+    size: 60,
     accept: '.mp3',
   },
   apk: {
-    maxSize: 200,
+    size: 200,
     accept: '.apk',
   },
   excel: {
-    maxSize: 100,
+    size: 100,
     accept: '.xlsx,.xls',
   },
 }
 ```
 
-例子
-
 ```vue
+<!-- 示例 -->
 
 <template>
   <Filepool fileType="abc"/>
@@ -305,7 +329,7 @@ import Filepool from 'filepool'
 Vue.use(Filepool, {
   fileTypeCatalog: {
     abc: {
-      maxSize: 10,
+      size: 10,
       accept: '.abc',
     },
   }
@@ -313,29 +337,44 @@ Vue.use(Filepool, {
 </script>
 ```
 
-<br/>
+<br>
 
-**获取上传进度/状态**
+## 限制音视频时长
 
-1. 添加一个ref如filepool
-2. this.$refs.filepool?.progress < 1 // 小于1表示上传中，等于1表示未开始/上传完毕
+```vue
+<!-- 示例：限制音频时长不能超过5分钟，视频时长介于10~60秒 -->
 
-<br/>
+<script>
+import Filepool from 'filepool'
+
+Vue.use(Filepool, {
+  fileTypeCatalog: {
+    audio: {
+      duration: 300
+    },
+    video: {
+      duration: [10, 60]
+    }
+  }
+})
+</script>
+```
+
+<br>
+
+## 获取上传进度
+
+1. 添加一个 `ref` 如 filepool
+2. `this.$refs.filepool?.progress < 1` （小于1表示上传中，等于1表示未开始/上传完毕）
+
+<br>
 
 ## Notice
 
-- 全局配置被props中的同名参数覆盖 对象会进行混入
-
-- maxSize权重排序：props ＞ fileTypeCatalog中对应的maxSize ＞ 全局默认的maxSize
-
-- 如果仅上传图片 请使用imgpond（附带图片编辑功能）
-
 - fileType如果为array类型 必须以引用data中变量的形式来传入
     - 这是因为每次父组件重渲染时 直接写在template中的引用型变量会被重新创建 导致意外触发组件内的监听
-    - 详见 https://github.com/vuejs/vue/issues/9223
+    - 详见 [issue](https://github.com/vuejs/vue/issues/9223)
 
 - 不限制上传文件数量 count可以传 `Number.MAX_SAFE_INTEGER`
 
-## TodoList
-
-- 多选时文件类型校验失败
+- `filepool` 不会对 `value` 的初始值进行校验
